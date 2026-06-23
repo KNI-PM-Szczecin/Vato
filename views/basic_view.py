@@ -118,8 +118,15 @@ class BasicView(ctk.CTkFrame):
 
     def execute_report_generation(self):
         user_email = self.email_input.get().strip()
-        if not self.is_email_valid(user_email):
-            PopupMessage("Błąd walidacji", "Podano niepoprawny adres email.", status="error")
+        if not user_email:
+            try:
+                email_service = EmailService()
+                user_email = email_service.recipient_email
+            except Exception:
+                user_email = None
+
+        if not user_email or not self.is_email_valid(user_email):
+            PopupMessage("Błąd walidacji", "Podano niepoprawny adres email lub brak domyślnego odbiorcy.", status="error")
             return
 
         nip = self.nip_input.get().strip()
@@ -133,27 +140,185 @@ class BasicView(ctk.CTkFrame):
         threading.Thread(target=self._async_report, args=(nip, user_email), daemon=True).start()
 
     def _async_report(self, nip, user_email):
+        """
+        Pobiera dane podmiotu dla podanego NIP-u, ocenia jego wiarygodność,
+        a następnie generuje i wysyła raport w formacie HTML na podany adres e-mail.
+        Wszystkie operacje są wykonywane asynchronicznie w tle.
+        """
         try:
+            import datetime
             company_data = api_test.fetch_company_data(nip)
             result = api_test.evaluate_contractor(company_data)
 
-            email_mockup = f"RAPORT KYC DLA PODMIOTU: {nip}\n"
-            email_mockup += f"Całkowity wynik: {result['total']} / 40\n"
-            email_mockup += "-" * 40 + "\n"
+            # Określenie rekomendacji i kolorów raportu na podstawie punktacji
+            total_score = result["total"]
+            if total_score >= 20:
+                recommendation = "Akceptacja (niskie ryzyko)"
+                bg_color = "#e8f5e9"
+                border_color = "#c8e6c9"
+                text_color = "#2e7d32"
+                status_color = "success"
+            elif total_score >= 0:
+                recommendation = "Wymagana dodatkowa weryfikacja"
+                bg_color = "#fff3e0"
+                border_color = "#ffe0b2"
+                text_color = "#e65100"
+                status_color = "warning"
+            else:
+                recommendation = "Odrzucenie (wysokie ryzyko!)"
+                bg_color = "#ffebee"
+                border_color = "#ffcdd2"
+                text_color = "#c62828"
+                status_color = "error"
+
+            # Budowanie listy szczegółów oceny w formacie HTML
+            details_items = ""
             for detail in result["details"]:
-                email_mockup += f"* {detail}\n"
-            email_mockup += "-" * 40 + "\n"
-            email_mockup += "Wiadomość wygenerowana automatycznie."
+                details_items += f"<li>{detail}</li>"
+
+            current_year = datetime.date.today().year
+
+            # Szablon wiadomości e-mail w formacie HTML w języku polskim
+            html_message = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Raport weryfikacji KYC - {nip}</title>
+    <style>
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            color: #333333;
+            margin: 0;
+            padding: 0;
+        }}
+        .container {{
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border: 1px solid #e1e4e8;
+        }}
+        .header {{
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }}
+        .header h1 {{
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+        }}
+        .header p {{
+            margin: 5px 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }}
+        .content {{
+            padding: 30px 25px;
+        }}
+        .score-box {{
+            text-align: center;
+            padding: 20px;
+            background-color: {bg_color};
+            border-radius: 6px;
+            margin-bottom: 25px;
+            border: 1px solid {border_color};
+        }}
+        .score-val {{
+            font-size: 36px;
+            font-weight: 700;
+            color: {text_color};
+            margin: 0;
+        }}
+        .score-label {{
+            font-size: 14px;
+            color: #666666;
+            margin: 5px 0 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }}
+        .score-recommendation {{
+            font-size: 16px;
+            font-weight: 600;
+            color: {text_color};
+            margin: 10px 0 0;
+        }}
+        .section-title {{
+            font-size: 18px;
+            font-weight: 600;
+            border-bottom: 2px solid #e1e4e8;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            color: #1e3c72;
+        }}
+        .details-list {{
+            list-style: none;
+            padding: 0;
+            margin: 0 0 25px 0;
+        }}
+        .details-list li {{
+            padding: 10px 12px;
+            border-bottom: 1px solid #f0f2f5;
+            font-size: 14px;
+            line-height: 1.5;
+        }}
+        .details-list li:last-child {{
+            border-bottom: none;
+        }}
+        .footer {{
+            background-color: #f8fafc;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #888888;
+            border-top: 1px solid #e1e4e8;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Raport Weryfikacji KYC</h1>
+            <p>Identyfikator NIP: {nip}</p>
+        </div>
+        <div class="content">
+            <div class="score-box">
+                <p class="score-val">{total_score} / 40</p>
+                <p class="score-label">Ocena Kontrahenta</p>
+                <p class="score-recommendation">Rekomendacja: {recommendation}</p>
+            </div>
+            
+            <div class="section-title">Szczegóły oceny</div>
+            <ul class="details-list">
+                {details_items}
+            </ul>
+        </div>
+        <div class="footer">
+            Wiadomość wygenerowana automatycznie przez aplikację Vato.<br>
+            &copy; {current_year} Vato KYC Tool
+        </div>
+    </div>
+</body>
+</html>
+"""
             
             email_service = EmailService()
             email_service.send_report(
                 recipient_email=user_email,
                 subject=f"Raport weryfikacji KYC - {nip}",
-                html_content=email_mockup
+                html_content=html_message
             )
             
-            self.after(0, lambda: PopupMessage("Sukces", f"Raport wygenerowany i wysłany na {user_email}.", status="success"))
-            self.after(0, lambda: self.append_result(f"Raport pomyślnie wysłany na {user_email}.\n\n{email_mockup}"))
+            # Tekstowy mockup raportu do wyświetlenia w oknie wyników GUI
+            gui_text = f"--- WYNIK DLA NIP: {nip} ---\nFirma uzyskała {total_score}/40 pkt.\nRekomendacja: {recommendation}\n\nSzczegóły:\n"
+            gui_text += "\n".join([f"- {d}" for d in result["details"]])
+
+            self.after(0, lambda: PopupMessage("Sukces", f"Raport wygenerowany i wysłany na {user_email}.", status=status_color))
+            self.after(0, lambda: self.append_result(f"Raport pomyślnie wysłany na {user_email}.\n\n{gui_text}"))
         except Exception as e:
             self.after(0, lambda: PopupMessage("Błąd wysyłki", f"Nie udało się wysłać raportu: {str(e)}", status="error"))
             self.after(0, lambda: self.append_result(f"Błąd wysyłki raportu: {str(e)}"))
