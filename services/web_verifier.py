@@ -162,6 +162,27 @@ def is_domain_similar(url: str, company_name: str) -> bool:
             
     return False
 
+def is_domain_suspicious_non_latin(domain: str) -> bool:
+    """
+    Checks if the domain contains any non-Latin characters (homoglyph/IDN phishing risk).
+    Allowed characters are standard ASCII letters, digits, dots, hyphens, and standard Polish characters.
+    """
+    if not domain:
+        return False
+        
+    try:
+        if domain.startswith("xn--"):
+            domain = domain.encode("ascii").decode("idna")
+    except Exception:
+        pass
+        
+    # Standard Latin + Polish characters pattern
+    allowed_pattern = re.compile(r'^[a-z0-9\.\-ąęćłńóśźż]+$', re.IGNORECASE)
+    if not allowed_pattern.match(domain):
+        return True
+        
+    return False
+
 async def search_website(company_name: str, nip: str) -> str | None:
     """Finds the company website domain using Yahoo Search with a DDG Lite fallback."""
     cleaned_name = clean_company_name(company_name)
@@ -387,7 +408,9 @@ async def enrich_with_web_data(contractor: ContractorData) -> ContractorData:
     base_domain = extract_base_domain(website_url)
     standardized_url = f"https://{base_domain}"
     
-    print(f"Weryfikacja strony WWW dla {company_name}: {standardized_url}")
+    suspicious_domain = is_domain_suspicious_non_latin(base_domain)
+    
+    print(f"Weryfikacja strony WWW dla {company_name}: {standardized_url} (Podejrzany alfabet: {suspicious_domain})")
     
     # 2. Parallel tasks for SSL, Age, Activity and NIP matching
     ssl_task = verify_ssl(standardized_url)
@@ -404,5 +427,6 @@ async def enrich_with_web_data(contractor: ContractorData) -> ContractorData:
         "ssl_valid": ssl_valid,
         "domain_age_days": domain_age_days,
         "days_since_last_post": days_since_last_post,
-        "website_nip_matched": website_nip_matched
+        "website_nip_matched": website_nip_matched,
+        "suspicious_domain": suspicious_domain
     })
