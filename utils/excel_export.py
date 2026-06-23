@@ -9,10 +9,10 @@ def export_results(results: list[ScoreResult], path: str) -> None:
                 "NIP": r.nip,
                 "Wynik": r.total,
                 "Maks": 40,
-                "Status prawny": r.status_prawny,
-                "Doświadczenie": r.doswiadczenie,
-                "Podatki VAT": r.podatki_vat,
-                "Stabilność": r.stabilnosc,
+                "Status prawny": r.legal_status,
+                "Doświadczenie": r.experience,
+                "Podatki VAT": r.vat_taxes,
+                "Stabilność": r.stability,
                 "Rekomendacja": r.risk_level.value,
             }
             for r in results
@@ -21,6 +21,6 @@ def export_results(results: list[ScoreResult], path: str) -> None:
         # Individual sheet per NIP
         for r in results:
             sheet_name = r.nip[:31]  # Excel sheet name limit
-            detail_data = [{"Kategoria": line} for line in r.szczegoly]
+            detail_data = [{"Kategoria": line} for line in r.details]
             detail_data.append({"Kategoria": f"WYNIK: {r.total}/40 — {r.risk_level.value}"})
             pd.DataFrame(detail_data).to_excel(writer, sheet_name=sheet_name, index=False)

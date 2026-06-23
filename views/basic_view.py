@@ -13,7 +13,7 @@ class BasicView(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
 
-        # --- Card 1: Wyszukiwanie ---
+        # --- Card 1: Search ---
         self.search_card = ctk.CTkFrame(self, corner_radius=10)
         self.search_card.grid(row=0, column=0, sticky="ew", pady=(0, 15))
         self.search_card.grid_columnconfigure(1, weight=1)
@@ -33,7 +33,7 @@ class BasicView(ctk.CTkFrame):
         )
         self.quick_validate_btn.grid(row=2, column=0, columnspan=2, padx=20, pady=(0, 20), sticky="ew")
 
-        # --- Card 2: Raportowanie ---
+        # --- Card 2: Reporting ---
         self.report_card = ctk.CTkFrame(self, corner_radius=10)
         self.report_card.grid(row=1, column=0, sticky="ew", pady=(0, 15))
         self.report_card.grid_columnconfigure(0, weight=1)
@@ -50,7 +50,7 @@ class BasicView(ctk.CTkFrame):
         )
         self.generate_report_btn.grid(row=2, column=0, padx=20, pady=(0, 20), sticky="ew")
 
-        # --- Card 3: Wyniki ---
+        # --- Card 3: Results ---
         self.result_card = ctk.CTkFrame(self, corner_radius=10)
         self.result_card.grid(row=2, column=0, sticky="nsew")
         self.result_card.grid_columnconfigure(0, weight=1)
@@ -81,7 +81,7 @@ class BasicView(ctk.CTkFrame):
         self.quick_validate_btn.configure(state="disabled", text="Przetwarzanie...")
         self.append_result(f"Trwa weryfikacja podmiotu dla: {nip}...\nProszę czekać.")
 
-        # Używamy wątku, aby nie blokować GUI (responsivity fix)
+        # We use a thread to avoid blocking the GUI (responsivity fix)
         threading.Thread(target=self._async_validate, args=(nip, method), daemon=True).start()
 
     def _async_validate(self, nip, method):
@@ -90,22 +90,22 @@ class BasicView(ctk.CTkFrame):
             result = api_test.evaluate_contractor(company_data)
 
             if result["total"] >= 20:
-                rekomendacja = "Akceptacja (niskie ryzyko)."
-                status_kolor = "success"
+                recommendation = "Akceptacja (niskie ryzyko)."
+                status_color = "success"
             elif result["total"] >= 0:
-                rekomendacja = "Wymagana weryfikacja."
-                status_kolor = "warning"
+                recommendation = "Wymagana weryfikacja."
+                status_color = "warning"
             else:
-                rekomendacja = "Odrzucenie (wysokie ryzyko!)."
-                status_kolor = "error"
+                recommendation = "Odrzucenie (wysokie ryzyko!)."
+                status_color = "error"
                 
-            raport_szybki = f"Firma uzyskała {result['total']}/40 pkt.\nRekomendacja: {rekomendacja}"
+            quick_report = f"Firma uzyskała {result['total']}/40 pkt.\nRekomendacja: {recommendation}"
             
-            szczegoly = "\n".join([f"- {d}" for d in result["szczegoly"]])
-            pelny_raport = f"--- WYNIK DLA {method}: {nip} ---\n{raport_szybki}\n\nSzczegóły:\n{szczegoly}"
+            details = "\n".join([f"- {d}" for d in result["details"]])
+            full_report = f"--- WYNIK DLA {method}: {nip} ---\n{quick_report}\n\nSzczegóły:\n{details}"
             
-            self.after(0, lambda: self.append_result(pelny_raport))
-            self.after(0, lambda: PopupMessage(f"Walidacja zakończona", raport_szybki, status=status_kolor))
+            self.after(0, lambda: self.append_result(full_report))
+            self.after(0, lambda: PopupMessage(f"Walidacja zakończona", quick_report, status=status_color))
         except Exception as e:
             self.after(0, lambda: PopupMessage("Błąd API", f"Wystąpił błąd podczas walidacji: {str(e)}", status="error"))
             self.after(0, lambda: self.append_result(f"Błąd krytyczny: {str(e)}"))
@@ -140,7 +140,7 @@ class BasicView(ctk.CTkFrame):
             email_mockup = f"RAPORT KYC DLA PODMIOTU: {nip}\n"
             email_mockup += f"Całkowity wynik: {result['total']} / 40\n"
             email_mockup += "-" * 40 + "\n"
-            for detail in result["szczegoly"]:
+            for detail in result["details"]:
                 email_mockup += f"* {detail}\n"
             email_mockup += "-" * 40 + "\n"
             email_mockup += "Wiadomość wygenerowana automatycznie."

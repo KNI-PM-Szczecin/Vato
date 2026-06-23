@@ -11,7 +11,7 @@ class AdvancedView(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
         
-        # --- Card 1: Pliki ---
+        # --- Card 1: Files ---
         self.files_card = ctk.CTkFrame(self, corner_radius=10)
         self.files_card.grid(row=0, column=0, sticky="ew", pady=(0, 15))
         self.files_card.grid_columnconfigure(1, weight=1)
@@ -19,7 +19,7 @@ class AdvancedView(ctk.CTkFrame):
         self.files_title = ctk.CTkLabel(self.files_card, text="Konfiguracja Plików (Masowa Walidacja)", font=ctk.CTkFont(size=16, weight="bold"))
         self.files_title.grid(row=0, column=0, columnspan=3, sticky="w", padx=20, pady=(15, 10))
 
-        # Zródło
+        # Source
         self.load_label = ctk.CTkLabel(self.files_card, text="Plik źródłowy (.xlsx):")
         self.load_label.grid(row=1, column=0, sticky="w", padx=(20, 10), pady=(0, 10))
         
@@ -29,7 +29,7 @@ class AdvancedView(ctk.CTkFrame):
         self.load_btn = ctk.CTkButton(self.files_card, text="Wybierz...", width=100, height=32, command=self.handle_file_load)
         self.load_btn.grid(row=1, column=2, sticky="e", padx=(0, 20), pady=(0, 10))
 
-        # Zapis
+        # Destination
         self.save_label = ctk.CTkLabel(self.files_card, text="Plik docelowy (.xlsx):")
         self.save_label.grid(row=2, column=0, sticky="w", padx=(20, 10), pady=(0, 20))
 
@@ -39,7 +39,7 @@ class AdvancedView(ctk.CTkFrame):
         self.save_btn = ctk.CTkButton(self.files_card, text="Wybierz...", width=100, height=32, command=self.handle_file_save)
         self.save_btn.grid(row=2, column=2, sticky="e", padx=(0, 20), pady=(0, 20))
 
-        # --- Card 2: Akcje ---
+        # --- Card 2: Actions ---
         self.actions_card = ctk.CTkFrame(self, corner_radius=10)
         self.actions_card.grid(row=1, column=0, sticky="ew", pady=(0, 15))
         self.actions_card.grid_columnconfigure(0, weight=1)

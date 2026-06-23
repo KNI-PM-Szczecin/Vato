@@ -12,7 +12,7 @@ BASE = "https://wl-api.mf.gov.pl/api"
 
 async def fetch_vat_data(nip: str, bank_account: str | None = None) -> dict:
     """
-    Returns dict with keys: status_vat, rachunek_na_bialej_liscie.
+    Returns dict with keys: vat_status, account_on_whitelist.
     On any error returns safe defaults (NIEZNANY / False).
     """
     check_date = date.today().isoformat()
@@ -25,7 +25,7 @@ async def fetch_vat_data(nip: str, bank_account: str | None = None) -> dict:
             data = resp.json()
 
         subject = data.get("result", {}).get("subject", {})
-        status_vat = subject.get("statusVat", "NIEZNANY")
+        vat_status = subject.get("statusVat", "NIEZNANY")
 
         on_whitelist = False
         if bank_account:
@@ -33,10 +33,10 @@ async def fetch_vat_data(nip: str, bank_account: str | None = None) -> dict:
             normalized = bank_account.replace(" ", "")
             on_whitelist = any(acc.replace(" ", "") == normalized for acc in accounts)
 
-        return {"status_vat": status_vat, "rachunek_na_bialej_liscie": on_whitelist}
+        return {"vat_status": vat_status, "account_on_whitelist": on_whitelist}
 
     except Exception:
-        return {"status_vat": "NIEZNANY", "rachunek_na_bialej_liscie": False}
+        return {"vat_status": "NIEZNANY", "account_on_whitelist": False}
 
 
 async def enrich(data: ContractorData) -> ContractorData:

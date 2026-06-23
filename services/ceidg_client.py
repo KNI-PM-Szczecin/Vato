@@ -38,15 +38,15 @@ async def fetch_ceidg_data(nip: str) -> dict:
         }
         status = status_map.get(status_raw.upper(), "NIEZNANY")
 
-        data_rej_str = firma.get("dataRozpoczecia", "")
-        data_rej = None
-        if data_rej_str:
+        reg_date_str = firma.get("start_date_json", "")
+        reg_date = None
+        if reg_date_str:
             try:
-                data_rej = date.fromisoformat(data_rej_str[:10])
+                reg_date = date.fromisoformat(reg_date_str[:10])
             except ValueError:
                 pass
 
-        return {"status_prawny": status, "data_rozpoczecia": data_rej}
+        return {"legal_status": status, "start_date": reg_date}
 
     except Exception:
         return {}

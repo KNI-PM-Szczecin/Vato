@@ -90,3 +90,9 @@ requests>=2.32.0
 
 - `/architecture` — project structure and `requirements.txt`
 - `/api-check` — async API integration patterns for this project
+
+## Coding Standards
+
+- **Komentarze**: Komentarze muszą zawsze opisywać, co dokładnie robi dana funkcja.
+- **Zmienne**: Wszystkie zmienne muszą być pisane po angielsku.
+- **Spójność kodu**: Należy rygorystycznie trzymać spójność notacji z resztą istniejącego kodu.

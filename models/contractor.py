@@ -18,23 +18,23 @@ class ContractorInput(BaseModel):
 class ContractorData(BaseModel):
     nip: str
     bank_account: str | None = None
-    status_prawny: str = "NIEZNANY"
-    data_rozpoczecia: date | None = None
-    status_vat: str = "NIEZNANY"
-    rachunek_na_bialej_liscie: bool = False
-    zmiany_adresu_ostatni_rok: int = 0
-    wymiana_zarzadu_ostatnie_3msc: bool = False
-    czeste_zmiany_formy: bool = False
+    legal_status: str = "NIEZNANY"
+    start_date: date | None = None
+    vat_status: str = "NIEZNANY"
+    account_on_whitelist: bool = False
+    address_changes_last_year: int = 0
+    board_changes_last_3_months: bool = False
+    frequent_legal_form_changes: bool = False
 
 
 class ScoreResult(BaseModel):
     nip: str
-    status_prawny: int = 0
-    doswiadczenie: int = 0
-    podatki_vat: int = 0
-    stabilnosc: int = 0
+    legal_status: int = 0
+    experience: int = 0
+    vat_taxes: int = 0
+    stability: int = 0
     total: int = 0
-    szczegoly: list[str] = []
+    details: list[str] = []
     risk_level: RiskLevel = RiskLevel.VERIFY
 
     @property

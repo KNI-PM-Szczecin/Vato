@@ -18,7 +18,7 @@ async def fetch_krs_data(nip: str) -> dict:
             # Step 1: find KRS number by NIP
             search = await client.get(f"{BASE}/podmiot/search", params={"nip": nip})
             search.raise_for_status()
-            items = search.json().get("odpis", {}).get("dane", {}).get("dzialy", {})
+            items = search.json().get("copy_doc", {}).get("dane", {}).get("sections", {})
             # Try direct NIP search endpoint
             resp = await client.get(
                 f"{BASE}/OdpisAktualny/{nip}",
@@ -28,18 +28,18 @@ async def fetch_krs_data(nip: str) -> dict:
                 return {}
             body = resp.json()
 
-        dzial1 = body.get("odpis", {}).get("dane", {}).get("dzial1", {})
-        info = dzial1.get("danePodmiotu", {})
+        section1 = body.get("copy_doc", {}).get("dane", {}).get("section1", {})
+        info = section1.get("subject_data", {})
 
-        data_rej_str = info.get("dataRejestracjiWKRS", "")
-        data_rej = None
-        if data_rej_str:
+        reg_date_str = info.get("dataRejestracjiWKRS", "")
+        reg_date = None
+        if reg_date_str:
             try:
-                data_rej = date.fromisoformat(data_rej_str[:10])
+                reg_date = date.fromisoformat(reg_date_str[:10])
             except ValueError:
                 pass
 
-        status_raw = info.get("statusPodmiotu", "")
+        status_raw = info.get("subject_status", "")
         status_map = {
             "": "NIEZNANY",
             "AKTYWNA": "AKTYWNA",
@@ -49,7 +49,7 @@ async def fetch_krs_data(nip: str) -> dict:
         }
         status = status_map.get(status_raw.upper(), "AKTYWNA")
 
-        return {"status_prawny": status, "data_rozpoczecia": data_rej}
+        return {"legal_status": status, "start_date": reg_date}
 
     except Exception:
         return {}

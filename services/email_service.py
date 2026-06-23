@@ -1,13 +1,13 @@
 class EmailService:
     def __init__(self):
-        # Docelowo tutaj można skonfigurować SMTP, np. smtplib.SMTP_SSL()
-        # lub połączyć się z zewnętrznym API do maili np. SendGrid / Resend.
+        # Ideally SMTP can be configured here, e.g. smtplib.SMTP_SSL()
+        # or connect to an external email API e.g. SendGrid / Resend.
         pass
 
     def send_report(self, recipient_email: str, subject: str, html_content: str, attachment_path: str = None):
         """
-        Symuluje wysyłanie e-maila z ładnym formatowaniem HTML, CSS i ewentualnymi załącznikami.
-        Na tym etapie tylko wypisuje w konsoli informacje o wysyłce.
+        Simulates sending an email with nice HTML formatting, CSS, and potential attachments.
+        At this stage it only prints the sending info to the console.
         """
         print("\n" + "="*60)
         print(">>> ROZPOCZĘCIE SYMULACJI WYSYŁKI E-MAILA <<<")
