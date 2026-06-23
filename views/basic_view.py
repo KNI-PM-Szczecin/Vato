@@ -1,9 +1,19 @@
+import base64
+import os
 import customtkinter as ctk
 import re
 from views.popup import PopupMessage
 import api_test
 from services.email_service import EmailService
 import threading
+
+_LOGO_B64 = ""
+_LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "vato_black.png")
+try:
+    with open(_LOGO_PATH, "rb") as _f:
+        _LOGO_B64 = base64.b64encode(_f.read()).decode("ascii")
+except OSError:
+    pass
 
 class BasicView(ctk.CTkFrame):
     def __init__(self, master):
@@ -171,137 +181,134 @@ class BasicView(ctk.CTkFrame):
                 text_color = "#c62828"
                 status_color = "error"
 
-            # Budowanie listy szczegółów oceny w formacie HTML
-            details_items = ""
-            for detail in result["details"]:
-                details_items += f"<li>{detail}</li>"
-
             current_year = datetime.date.today().year
 
-            # Szablon wiadomości e-mail w formacie HTML w języku polskim
+            # Sekcja szczegółów jako elementy listy HTML
+            details_items = "".join(
+                f'<li style="padding:9px 0;border-bottom:1px solid #f0f2f5;font-size:14px;line-height:1.5;">{d}</li>'
+                for d in result["details"]
+            )
+
+            # Dynamiczne zaznaczenie kryterium "5 lat działalności" (jedyne dostępne z danych API)
+            years_in_biz = result.get("2_experience", 0)
+            def criterion_badge(met: bool | None) -> str:
+                if met is None:
+                    return '<span style="background:#eeeeee;color:#888;padding:2px 8px;border-radius:10px;font-size:12px;">brak danych</span>'
+                color, label = ("#e8f5e9", "✓ spełnione") if met else ("#ffebee", "✗ niespełnione")
+                txt_color = "#2e7d32" if met else "#c62828"
+                return f'<span style="background:{color};color:{txt_color};padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;">{label}</span>'
+
+            criteria_rows = [
+                ("Ma więcej niż 100 sprawnych pojazdów", "+10", None),
+                ("Mniej niż 15% floty jest w serwisie", "−5", None),
+                ("Kapitał zakładowy przynajmniej 20% obrotów", "+5", None),
+                ("Brak komornika na głowie", "+5", None),
+                ("5 lat działalności", "+10", years_in_biz == 10),
+                ("10 lat działalności", "0", None),
+            ]
+            criteria_html = ""
+            for i, (label, pts, met) in enumerate(criteria_rows):
+                row_bg = "#f8fafc" if i % 2 == 0 else "#ffffff"
+                criteria_html += (
+                    f'<tr style="background:{row_bg};">'
+                    f'<td style="padding:10px 14px;font-size:13px;border-bottom:1px solid #eee;">{label}</td>'
+                    f'<td style="padding:10px 14px;font-size:13px;font-weight:700;text-align:center;border-bottom:1px solid #eee;">{pts}</td>'
+                    f'<td style="padding:10px 14px;text-align:center;border-bottom:1px solid #eee;">{criterion_badge(met)}</td>'
+                    f'</tr>'
+                )
+
+            # Sekcja "wynik testu" wzorowana na output run_test.py
+            risk_label = "SREDNIE (Zalecana ostroznosc)"
+            if total_score >= 20:
+                risk_label = "NISKIE (Zaufany kontrahent)"
+            elif total_score < 0:
+                risk_label = "WYSOKIE (Zagrozenie)"
+
+            terminal_lines = [
+                f"Rozpoczyna weryfikację: NIP={nip}",
+                "Identyfikacja i ocena kontrahenta ...",
+                "Uruchamianie algorytmu scoringowego ...",
+                "",
+                "=" * 42,
+                f"Wynik: {nip} -&gt; {risk_label} ({total_score} pkt)",
+                "=" * 42,
+            ]
+            terminal_html = "<br>".join(terminal_lines)
+
+            logo_img = (
+                f'<img src="data:image/png;base64,{_LOGO_B64}" alt="Vato" '
+                f'style="max-width:200px;height:auto;display:block;margin:0 auto;">'
+                if _LOGO_B64 else
+                '<p style="font-size:22px;font-weight:700;text-align:center;color:#111;">VATO</p>'
+            )
+
             html_message = f"""<!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <title>Raport weryfikacji KYC - {nip}</title>
-    <style>
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f6f9;
-            color: #333333;
-            margin: 0;
-            padding: 0;
-        }}
-        .container {{
-            max-width: 600px;
-            margin: 20px auto;
-            background: #ffffff;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            border: 1px solid #e1e4e8;
-        }}
-        .header {{
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: #ffffff;
-            padding: 30px 20px;
-            text-align: center;
-        }}
-        .header h1 {{
-            margin: 0;
-            font-size: 24px;
-            font-weight: 700;
-        }}
-        .header p {{
-            margin: 5px 0 0;
-            font-size: 14px;
-            opacity: 0.9;
-        }}
-        .content {{
-            padding: 30px 25px;
-        }}
-        .score-box {{
-            text-align: center;
-            padding: 20px;
-            background-color: {bg_color};
-            border-radius: 6px;
-            margin-bottom: 25px;
-            border: 1px solid {border_color};
-        }}
-        .score-val {{
-            font-size: 36px;
-            font-weight: 700;
-            color: {text_color};
-            margin: 0;
-        }}
-        .score-label {{
-            font-size: 14px;
-            color: #666666;
-            margin: 5px 0 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }}
-        .score-recommendation {{
-            font-size: 16px;
-            font-weight: 600;
-            color: {text_color};
-            margin: 10px 0 0;
-        }}
-        .section-title {{
-            font-size: 18px;
-            font-weight: 600;
-            border-bottom: 2px solid #e1e4e8;
-            padding-bottom: 8px;
-            margin-bottom: 15px;
-            color: #1e3c72;
-        }}
-        .details-list {{
-            list-style: none;
-            padding: 0;
-            margin: 0 0 25px 0;
-        }}
-        .details-list li {{
-            padding: 10px 12px;
-            border-bottom: 1px solid #f0f2f5;
-            font-size: 14px;
-            line-height: 1.5;
-        }}
-        .details-list li:last-child {{
-            border-bottom: none;
-        }}
-        .footer {{
-            background-color: #f8fafc;
-            padding: 20px;
-            text-align: center;
-            font-size: 12px;
-            color: #888888;
-            border-top: 1px solid #e1e4e8;
-        }}
-    </style>
+  <meta charset="utf-8">
+  <title>Raport weryfikacji KYC — {nip}</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Raport Weryfikacji KYC</h1>
-            <p>Identyfikator NIP: {nip}</p>
-        </div>
-        <div class="content">
-            <div class="score-box">
-                <p class="score-val">{total_score} / 40</p>
-                <p class="score-label">Ocena Kontrahenta</p>
-                <p class="score-recommendation">Rekomendacja: {recommendation}</p>
-            </div>
-            
-            <div class="section-title">Szczegóły oceny</div>
-            <ul class="details-list">
-                {details_items}
-            </ul>
-        </div>
-        <div class="footer">
-            Wiadomość wygenerowana automatycznie przez aplikację Vato.<br>
-            &copy; {current_year} Vato KYC Tool
-        </div>
+<body style="margin:0;padding:0;background:#eef1f6;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#2c2c3a;">
+
+  <div style="max-width:600px;margin:28px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,0.09);border:1px solid #dde1ea;">
+
+    <!-- LOGO -->
+    <div style="padding:26px 24px 18px;text-align:center;background:#fff;border-bottom:1px solid #eaecf0;">
+      {logo_img}
+      <p style="margin:10px 0 0;font-size:10px;color:#bbb;letter-spacing:2px;text-transform:uppercase;font-weight:600;">Raport Weryfikacji Kontrahenta</p>
     </div>
+
+    <div style="padding:24px 28px 20px;">
+
+      <!-- WYNIK SCORINGOWY -->
+      <div style="display:flex;align-items:center;padding:18px 22px;background:{bg_color};border-radius:8px;border-left:5px solid {text_color};border:1px solid {border_color};margin-bottom:24px;">
+        <div style="flex:0 0 auto;text-align:center;padding-right:20px;border-right:1px solid {border_color};">
+          <p style="margin:0;font-size:38px;font-weight:800;color:{text_color};line-height:1;">{total_score}</p>
+          <p style="margin:2px 0 0;font-size:11px;color:#999;letter-spacing:1px;text-transform:uppercase;">/ 40 pkt</p>
+        </div>
+        <div style="padding-left:20px;">
+          <p style="margin:0;font-size:15px;font-weight:700;color:{text_color};">{recommendation}</p>
+          <p style="margin:3px 0 0;font-size:12px;color:#888;">NIP: <strong>{nip}</strong></p>
+          <p style="margin:3px 0 0;font-size:12px;color:#888;">Data raportu: {datetime.date.today().strftime('%d.%m.%Y')}</p>
+        </div>
+      </div>
+
+      <!-- TABELA KRYTERIÓW -->
+      <p style="font-size:13px;font-weight:700;color:#1e3c72;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #e8eaf0;padding-bottom:7px;margin:0 0 12px;">Kryteria oceny</p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
+        <thead>
+          <tr style="background:#1e3c72;color:#fff;">
+            <th style="padding:9px 13px;text-align:left;font-size:12px;font-weight:600;border-radius:0;">Kryterium</th>
+            <th style="padding:9px 13px;text-align:center;font-size:12px;font-weight:600;width:50px;">Pkt</th>
+            <th style="padding:9px 13px;text-align:center;font-size:12px;font-weight:600;width:120px;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {criteria_html}
+        </tbody>
+      </table>
+      <p style="font-size:10px;color:#bbb;margin:4px 0 22px;">&#42; Kryteria "brak danych" wymagają weryfikacji z zewnętrznych źródeł (dane flotowe, kapitałowe).</p>
+
+      <!-- WYNIK WERYFIKACJI (terminal) -->
+      <p style="font-size:13px;font-weight:700;color:#1e3c72;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #e8eaf0;padding-bottom:7px;margin:0 0 12px;">Wynik weryfikacji</p>
+      <div style="background:#12121f;color:#c8d0e0;border-radius:7px;padding:13px 16px;font-family:'Courier New',Courier,monospace;font-size:11.5px;line-height:1.65;margin-bottom:22px;">
+        {terminal_html}
+      </div>
+
+      <!-- SZCZEGÓŁY -->
+      <p style="font-size:13px;font-weight:700;color:#1e3c72;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #e8eaf0;padding-bottom:7px;margin:0 0 4px;">Szczegóły oceny</p>
+      <ul style="list-style:none;padding:0;margin:0 0 8px 0;">
+        {details_items}
+      </ul>
+
+    </div>
+
+    <!-- FOOTER -->
+    <div style="background:#f5f7fb;padding:14px 20px;text-align:center;font-size:10px;color:#bbb;border-top:1px solid #e8eaf0;letter-spacing:0.3px;">
+      Wygenerowano automatycznie przez <strong style="color:#999;">Vato KYC Tool</strong> &nbsp;·&nbsp; &copy; {current_year}
+    </div>
+
+  </div>
 </body>
 </html>
 """
