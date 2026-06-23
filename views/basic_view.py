@@ -195,49 +195,44 @@ class BasicView(ctk.CTkFrame):
         threading.Thread(target=self._async_report, args=(nip, user_email), daemon=True).start()
 
     def _async_report(self, nip, user_email):
-        """
-        Pobiera dane podmiotu dla podanego NIP-u, ocenia jego wiarygodność,
-        a następnie generuje i wysyła raport w formacie HTML na podany adres e-mail.
-        Wszystkie operacje są wykonywane asynchronicznie w tle.
-        """
         try:
-            import asyncio
-            from models.contractor import ContractorData
-            from scoring.scorer import enrich
             import datetime
+            import re as _re
+
             company_name = api_test.fetch_company_name(nip)
             company_data = api_test.fetch_company_data(nip)
             result = api_test.evaluate_contractor(company_data)
 
-            total_score = score_data['total_score']
-            recommendation = score_data['risk_level']
-            color = score_data['color_code']
-            
-            if color == "green":
+            total_score = result["total"]
+
+            if total_score >= 20:
+                recommendation = "Akceptacja (niskie ryzyko)"
                 bg_color = "#e8f5e9"
                 border_color = "#c8e6c9"
                 text_color = "#2e7d32"
                 status_color = "success"
-            elif color == "yellow":
+            elif total_score >= 0:
+                recommendation = "Wymagana dodatkowa weryfikacja"
                 bg_color = "#fff3e0"
                 border_color = "#ffe0b2"
                 text_color = "#e65100"
                 status_color = "warning"
             else:
+                recommendation = "Odrzucenie (wysokie ryzyko!)"
                 bg_color = "#ffebee"
                 border_color = "#ffcdd2"
                 text_color = "#c62828"
                 status_color = "error"
 
             current_year = datetime.date.today().year
-
-            # Tytuł firmy — title case dla czytelności (API zwraca CAPS)
+            report_date = datetime.datetime.now().strftime('%d.%m.%Y')
+            report_time = datetime.datetime.now().strftime('%H:%M')
             company_display = company_name.title() if company_name != "---" else "—"
 
-            # Tabela kryteriów z image.png — dynamiczne zaznaczenie "5 lat działalności"
+            # Tabela kryteriów z image.png
             years_in_biz = result.get("2_experience", 0)
 
-            def criterion_badge(met: bool | None) -> str:
+            def criterion_badge(met):
                 if met is None:
                     return '<span style="background:#f0f0f0;color:#aaa;padding:3px 10px;border-radius:20px;font-size:11px;">brak danych</span>'
                 if met:
@@ -263,38 +258,33 @@ class BasicView(ctk.CTkFrame):
                     f'</tr>'
                 )
 
-            # Tabela wyników weryfikacji — zastępuje terminal, czytelna dla nietech. użytkowników
+            # Tabela wyników weryfikacji
             category_map = [
-                ("1_legal_status", "Status prawny",   "Rejestracja i aktywność gospodarcza"),
-                ("2_experience",   "Doświadczenie",   "Staż firmy na rynku"),
-                ("3_vat_taxes",    "Podatki / VAT",   "Status VAT i Biała Lista MF"),
-                ("4_stability",    "Stabilność",      "Zmiany zarządu i adresu siedziby"),
+                ("1_legal_status", "Status prawny",  "Rejestracja i aktywność gospodarcza"),
+                ("2_experience",   "Doświadczenie",  "Staż firmy na rynku"),
+                ("3_vat_taxes",    "Podatki / VAT",  "Status VAT i Biała Lista MF"),
+                ("4_stability",    "Stabilność",     "Zmiany zarządu i adresu siedziby"),
             ]
-            import re as _re
             results_rows_html = ""
             for i, (key, cat_name, cat_desc) in enumerate(category_map):
                 score_val = result.get(key, 0)
                 detail_str = result["details"][i] if i < len(result["details"]) else ""
                 desc = _re.sub(r'^[^:]+:\s*', '', detail_str).rstrip(".")
-
                 if score_val > 0:
                     s_color, s_bg, s_str = "#1e7e34", "#e6f4ea", f"+{score_val}"
                 elif score_val < 0:
                     s_color, s_bg, s_str = "#c0392b", "#fdecea", str(score_val)
                 else:
                     s_color, s_bg, s_str = "#666", "#f5f5f5", "0"
-
                 row_bg = "#f9fafc" if i % 2 == 0 else "#ffffff"
                 results_rows_html += (
                     f'<tr style="background:{row_bg};">'
                     f'<td style="padding:12px 14px;border-bottom:1px solid #eef0f4;width:130px;">'
-                    f'  <p style="margin:0;font-size:13px;font-weight:700;color:#1e3c72;">{cat_name}</p>'
-                    f'  <p style="margin:2px 0 0;font-size:11px;color:#aaa;">{cat_desc}</p>'
-                    f'</td>'
+                    f'<p style="margin:0;font-size:13px;font-weight:700;color:#1e3c72;">{cat_name}</p>'
+                    f'<p style="margin:2px 0 0;font-size:11px;color:#aaa;">{cat_desc}</p></td>'
                     f'<td style="padding:12px 14px;font-size:13px;color:#444;border-bottom:1px solid #eef0f4;line-height:1.45;">{desc}</td>'
                     f'<td style="padding:12px 14px;text-align:center;border-bottom:1px solid #eef0f4;white-space:nowrap;">'
-                    f'  <span style="background:{s_bg};color:{s_color};padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;">{s_str} pkt</span>'
-                    f'</td>'
+                    f'<span style="background:{s_bg};color:{s_color};padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;">{s_str} pkt</span></td>'
                     f'</tr>'
                 )
 
@@ -311,34 +301,34 @@ class BasicView(ctk.CTkFrame):
   <meta charset="utf-8">
   <title>Raport weryfikacji KYC — {nip}</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Raport Weryfikacji KYC</h1>
-            <p>Identyfikator NIP: {nip}</p>
-        </div>
-        <div class="content">
-            <div class="score-box">
-                <p class="score-val">{total_score} / 60</p>
-                <p class="score-label">Ocena Kontrahenta</p>
-                <p class="score-recommendation">Rekomendacja: {recommendation}</p>
-            </div>
-            
-            <div class="section-title">Szczegóły oceny</div>
-            <ul class="details-list">
-                {details_items}
-            </ul>
+<body style="margin:0;padding:0;background:#eef1f6;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#2c2c3a;">
+  <div style="max-width:600px;margin:28px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,0.09);border:1px solid #dde1ea;">
+
+    <!-- LOGO -->
+    <div style="padding:24px 24px 16px;text-align:center;background:#fff;border-bottom:1px solid #eaecf0;">
+      {logo_img}
+      <p style="margin:10px 0 4px;font-size:10px;color:#bbb;letter-spacing:2px;text-transform:uppercase;font-weight:600;">Raport Weryfikacji Kontrahenta</p>
+      <p style="margin:0;font-size:11px;color:#ccc;">Wygenerowany {report_date} o {report_time} przez Vato KYC Tool</p>
+    </div>
+
+    <div style="padding:22px 26px 20px;">
+
+      <!-- WYNIK SCORINGOWY -->
+      <div style="display:table;width:100%;padding:16px 20px;background:{bg_color};border-radius:10px;border:1px solid {border_color};margin-bottom:22px;box-sizing:border-box;">
+        <div style="display:table-cell;text-align:center;padding-right:18px;border-right:1px solid {border_color};width:90px;vertical-align:middle;">
+          <p style="margin:0;font-size:36px;font-weight:800;color:{text_color};line-height:1;">{total_score}</p>
+          <p style="margin:3px 0 0;font-size:10px;color:#aaa;letter-spacing:1px;text-transform:uppercase;">/ 40 pkt</p>
         </div>
         <div style="display:table-cell;padding-left:18px;vertical-align:middle;">
           <p style="margin:0;font-size:15px;font-weight:700;color:{text_color};">{recommendation}</p>
           <p style="margin:5px 0 2px;font-size:14px;font-weight:600;color:#333;">{company_display}</p>
-          <p style="margin:0;font-size:11px;color:#aaa;">NIP:&nbsp;{nip}&nbsp;&nbsp;·&nbsp;&nbsp;{datetime.date.today().strftime('%d.%m.%Y')}</p>
+          <p style="margin:0;font-size:11px;color:#aaa;">NIP:&nbsp;{nip}&nbsp;&nbsp;·&nbsp;&nbsp;{report_date}</p>
         </div>
       </div>
 
       <!-- TABELA KRYTERIÓW OCENY -->
       <p style="font-size:11px;font-weight:700;color:#1e3c72;text-transform:uppercase;letter-spacing:1.2px;border-bottom:2px solid #e8eaf0;padding-bottom:7px;margin:0 0 10px;">Kryteria oceny</p>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:4px;border-radius:8px;overflow:hidden;border:1px solid #e8eaf0;">
+      <table style="width:100%;border-collapse:collapse;margin-bottom:4px;border:1px solid #e8eaf0;">
         <thead>
           <tr style="background:#1e3c72;color:#fff;">
             <th style="padding:9px 13px;text-align:left;font-size:12px;font-weight:600;">Kryterium</th>
@@ -350,9 +340,9 @@ class BasicView(ctk.CTkFrame):
       </table>
       <p style="font-size:10px;color:#ccc;margin:4px 0 22px;">* Kryteria "brak danych" wymagają weryfikacji z zewnętrznych źródeł (dane flotowe, kapitałowe).</p>
 
-      <!-- WYNIKI WERYFIKACJI — czytelna tabelka dla nietech. użytkowników -->
+      <!-- WYNIKI WERYFIKACJI -->
       <p style="font-size:11px;font-weight:700;color:#1e3c72;text-transform:uppercase;letter-spacing:1.2px;border-bottom:2px solid #e8eaf0;padding-bottom:7px;margin:0 0 10px;">Wyniki weryfikacji</p>
-      <table style="width:100%;border-collapse:collapse;border:1px solid #e8eaf0;border-radius:8px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e8eaf0;">
         <thead>
           <tr style="background:#1e3c72;color:#fff;">
             <th style="padding:9px 13px;text-align:left;font-size:12px;font-weight:600;width:130px;">Obszar</th>
@@ -374,18 +364,16 @@ class BasicView(ctk.CTkFrame):
 </body>
 </html>
 """
-            
+
             email_service = EmailService()
             email_service.send_report(
                 recipient_email=user_email,
-                subject=f"Raport weryfikacji KYC - {nip}",
+                subject=f"Raport weryfikacji KYC — {nip}",
                 html_content=html_message
             )
-            
-            # Tekstowy mockup raportu do wyświetlenia w oknie wyników GUI
-            gui_text = f"--- WYNIK DLA NIP: {nip} ---\nFirma uzyskała {total_score}/60 pkt.\nRekomendacja: {recommendation}\n\nSzczegóły:\n"
-            gui_text += "\n".join([f"- {d}" for d in score_data["justifications"]])
 
+            gui_text = f"--- WYNIK DLA NIP: {nip} ---\nFirma: {company_display}\nUzyskała {total_score}/40 pkt.\nRekomendacja: {recommendation}\n\nSzczegóły:\n"
+            gui_text += "\n".join(f"- {d}" for d in result["details"])
             success_msg = f"Raport pomyślnie wysłany na {user_email}.\n\n{gui_text}"
             popup_msg = f"Raport wygenerowany i wysłany na {user_email}."
 
