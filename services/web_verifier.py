@@ -117,31 +117,84 @@ async def search_ddg_lite(query: str) -> str | None:
         print(f"Błąd DDG Lite dla '{query}': {e}")
     return None
 
+def is_domain_similar(url: str, company_name: str) -> bool:
+    """Checks if the found domain name is similar to the company's name to prevent matching random websites."""
+    if not url or not company_name:
+        return False
+        
+    try:
+        parsed = urlparse(url)
+        netloc = parsed.netloc or parsed.path
+        if netloc.startswith("www."):
+            netloc = netloc[4:]
+        domain_name = netloc.split('.')[0] if '.' in netloc else netloc
+    except Exception:
+        return False
+        
+    domain_clean = re.sub(r'[^a-z0-9]', '', domain_name.lower())
+    
+    def strip_pl(t: str) -> str:
+        mapping = {
+            'ą': 'a', 'Ą': 'A', 'ć': 'c', 'Ć': 'C', 'ę': 'e', 'Ę': 'E',
+            'ł': 'l', 'Ł': 'L', 'ń': 'n', 'Ń': 'N', 'ó': 'o', 'Ó': 'O',
+            'ś': 's', 'Ś': 'S', 'ź': 'z', 'Ź': 'Z', 'ż': 'z', 'Ż': 'Z'
+        }
+        for pol, eng in mapping.items():
+            t = t.replace(pol, eng)
+        return t
+        
+    cleaned_company = strip_pl(clean_company_name(company_name).lower())
+    cleaned_company_clean = re.sub(r'[^a-z0-9\s]', '', cleaned_company)
+    
+    words = [w for w in cleaned_company_clean.split() if len(w) >= 3]
+    if not words:
+        return False
+        
+    # Check if first word of company name is in domain_clean
+    first_word = words[0]
+    if first_word in domain_clean or domain_clean in first_word:
+        return True
+        
+    # Check if any other word of length >= 4 is in domain_clean
+    for word in words:
+        if len(word) >= 4 and (word in domain_clean or domain_clean in word):
+            return True
+            
+    return False
+
 async def search_website(company_name: str, nip: str) -> str | None:
     """Finds the company website domain using Yahoo Search with a DDG Lite fallback."""
     cleaned_name = clean_company_name(company_name)
     if not cleaned_name:
         return None
 
+    def check_url(url: str | None) -> str | None:
+        if url and is_domain_similar(url, company_name):
+            return url
+        return None
+
     # 1. Try with "strona oficjalna" first to avoid KRS directories which dominate NIP-based searches
     query_name = f"{cleaned_name} strona oficjalna"
     url = await search_yahoo(query_name)
-    if url:
-        return url
+    matched = check_url(url)
+    if matched:
+        return matched
 
     # 2. Try with NIP as fallback
     query_nip = f"{cleaned_name} NIP {nip}"
     url = await search_yahoo(query_nip)
-    if url:
-        return url
+    matched = check_url(url)
+    if matched:
+        return matched
 
     # 3. Try DDG Lite fallback
     url = await search_ddg_lite(query_name)
-    if url:
-        return url
+    matched = check_url(url)
+    if matched:
+        return matched
         
     url = await search_ddg_lite(query_nip)
-    return url
+    return check_url(url)
 
 async def verify_ssl(url: str) -> bool:
     """Verifies if the website supports valid HTTPS/SSL connection."""

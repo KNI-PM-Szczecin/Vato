@@ -157,8 +157,7 @@ async def enrich(data: ContractorData) -> ContractorData:
             web_score += 2
             justifications.append("Witryna zabezpieczona poprawnym certyfikatem SSL/TLS (+2 pkt).")
         else:
-            web_score -= 2
-            justifications.append("Witryna nie posiada aktywowego/poprawnego certyfikatu SSL/TLS (-2 pkt).")
+            justifications.append("Witryna nie posiada aktywnego/poprawnego certyfikatu SSL/TLS (0 pkt).")
             
         # 2. Domain Age Check
         domain_age = getattr(data, 'domain_age_days', None)
@@ -170,8 +169,7 @@ async def enrich(data: ContractorData) -> ContractorData:
                 web_score += 1
                 justifications.append(f"Domena zarejestrowana ponad 6 miesięcy temu ({domain_age} dni temu) (+1 pkt).")
             elif domain_age < 90:
-                web_score -= 3
-                justifications.append(f"Domena zarejestrowana niedawno ({domain_age} dni temu) - wysokie ryzyko! (-3 pkt).")
+                justifications.append(f"Domena zarejestrowana niedawno ({domain_age} dni temu) (0 pkt).")
             else:
                 justifications.append(f"Domena zarejestrowana {domain_age} dni temu (0 pkt).")
         else:
