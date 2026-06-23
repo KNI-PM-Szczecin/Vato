@@ -1,0 +1,21 @@
+Jesteś elitarnym architektem oprogramowania i programistą Python. Rozpoczynamy projekt na Hackathon Morski (wyzwanie: "Automatyzacja procesu oceny wiarygodności kontrahentów"). 
+
+Naszym celem jest stworzenie natywnej APLIKACJI DESKTOPOWEJ. Całość piszemy w języku Python. 
+Jako biblioteki do GUI chcę użyć [WYBIERZ: PyQt6 LUB CustomTkinter].
+
+Aplikacja ma służyć analitykom logistycznym do błyskawicznej weryfikacji przewoźników i klientów, agregując dane z wielu rozproszonych API i używając LLM do analizy ryzyka.
+
+Oto kluczowe wymagania funkcjonalne (MVP):
+1. Panel główny (Dashboard UI): Wyszukiwarka kontrahenta po NIP/KRS/Nazwie oraz lista ostatnich wyszukiwań ze statusem ryzyka.
+2. Integracja z API (Backend logic): Asynchroniczne pobieranie danych z rejestrów (KRS/CEIDG), podatków (Biała Lista VAT, VIES), licencji transportowych oraz sprawozdań finansowych.
+3. Moduł AI (Wyjaśnialne AI): Integracja z LLM (np. OpenAI/Anthropic API) za pomocą Pythona. LLM analizuje pobrane dane strukturalne i generuje ocenę ryzyka (Niskie/Średnie/Wysokie) wraz z czytelnym, transparentnym uzasadnieniem ("łańcuch myśli"), aby człowiek mógł prześledzić decyzję.
+4. Generowanie raportu: Widok szczegółowy kontrahenta z sekcjami (Dane prawne, Finanse, Licencje, Flagi Ryzyka) oraz opcja eksportu do PDF (np. używając biblioteki ReportLab lub FPDF).
+5. Bezpieczeństwo danych: Walidacja danych kontaktowych pod kątem ochrony przed phishingiem.
+
+Zanim napiszesz jakikolwiek kod, wykonaj następujące kroki:
+1. Zaproponuj czystą architekturę projektu w Pythonie (np. wzorzec MVC/MVVM), aby oddzielić logikę GUI od logiki biznesowej i zapytań sieciowych.
+2. Podaj strukturę katalogów projektu oraz listę wymaganych bibliotek do pliku `requirements.txt`.
+3. Wyjaśnij krótko, jak zamierzasz obsłużyć asynchroniczność (np. QThread w PyQt lub asyncio), aby interfejs aplikacji nie "zamrażał" się podczas czekania na odpowiedź z API lub od modelu AI.
+4. Zapytaj mnie o ewentualne doprecyzowanie kwestii, które uważasz za kluczowe przed startem kodowania.
+
+Odpowiedz w sposób zwięzły, techniczny i ustrukturyzowany. Nie pisz jeszcze kodu aplikacji, skup się na architekturze i krokach startowych.
