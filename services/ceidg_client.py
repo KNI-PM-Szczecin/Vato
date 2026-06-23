@@ -52,16 +52,51 @@ async def _fetch_via_api(nip: str, api_key: str) -> dict:
             return {}
 
         status = STATUS_MAP.get(firma.get("status", "").upper(), "NIEZNANY")
-        data_rej = _parse_date(firma.get("dataRozpoczecia", ""))
-        return {"legal_status": status, "start_date": data_rej}
+        reg_date = _parse_date(firma.get("dataRozpoczecia", ""))
+        name = firma.get("nazwa") or firma.get("firma") or ""
+        
+        res = {"status_prawny": status, "data_rozpoczecia": reg_date}
+        if name:
+            res["legal_name"] = name.strip()
+        return res
     except Exception:
         return {}
 
 
-        return {"status_prawny": status, "data_rozpoczecia": data_rej, "share_capital": 0.0, "has_bailiff_proceedings": None}
+# ── Portal scraper ────────────────────────────────────────────────────────────
 
+def _hidden(html: str, name: str) -> str:
+    m = re.search(rf'id="{re.escape(name)}"[^>]*value="([^"]*)"', html)
+    return m.group(1) if m else ""
+
+
+async def _fetch_via_scraper(nip: str) -> dict:
+    try:
+        async with httpx.AsyncClient(
+            headers=_HEADERS, follow_redirects=True, timeout=20
+        ) as client:
+            # Step 1 — load the form to get ASP.NET hidden fields
+            r = await client.get(PORTAL_URL)
+            r.raise_for_status()
+            html = r.text
+
+            form_data = {
+                "__VIEWSTATE": _hidden(html, "__VIEWSTATE"),
+                "__VIEWSTATEGENERATOR": _hidden(html, "__VIEWSTATEGENERATOR"),
+                "__EVENTVALIDATION": _hidden(html, "__EVENTVALIDATION"),
+                "__EVENTTARGET": "",
+                "__EVENTARGUMENT": "",
+                "ctl00$ContentPlaceHolder1$txtNIP": nip,
+                "ctl00$ContentPlaceHolder1$btnSzukaj": "Szukaj",
+            }
+
+            # Step 2 — submit search
+            r = await client.post(PORTAL_URL, data=form_data)
+            r.raise_for_status()
+            return _parse_portal_html(r.text)
     except Exception:
         return {}
+
 
 
 def _parse_portal_html(html: str) -> dict:
@@ -75,7 +110,7 @@ def _parse_portal_html(html: str) -> dict:
     )
     if status_match:
         raw = status_match.group(1).strip().upper()
-        result["legal_status"] = STATUS_MAP.get(raw, "AKTYWNA")
+        result["status_prawny"] = STATUS_MAP.get(raw, "AKTYWNA")
 
     # Founding date — look for "Data rozpoczęcia" or "Data wpisu"
     date_match = re.search(
@@ -83,11 +118,16 @@ def _parse_portal_html(html: str) -> dict:
         html, re.IGNORECASE
     )
     if date_match:
-        result["start_date"] = _parse_date(date_match.group(1))
+        result["data_rozpoczecia"] = _parse_date(date_match.group(1))
+
+    # Name extraction
+    name_match = re.search(r'href="Details\.aspx\?Id=[^"]*"[^>]*>\s*([^<]+)', html, re.IGNORECASE)
+    if name_match:
+        result["legal_name"] = name_match.group(1).strip()
 
     # Fallback: if we got any results page (no "Brak wyników"), assume active
-    if "Brak wynik" not in html and not result.get("legal_status"):
-        result["legal_status"] = "ACTIVE"
+    if "Brak wynik" not in html and not result.get("status_prawny"):
+        result["status_prawny"] = "ACTIVE"
 
     return result
 

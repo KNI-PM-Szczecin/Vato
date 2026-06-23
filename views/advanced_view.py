@@ -189,24 +189,8 @@ class AdvancedView(ctk.CTkFrame):
         results_dict = {}
         for nip in nips:
             try:
-                import asyncio
-                from models.contractor import ContractorData
-                from scoring.scorer import enrich
-                import datetime
-                
-                company_dict = api_test.fetch_company_data(nip)
-                
-                cdata = ContractorData(
-                    nip=company_dict["nip"],
-                    status_prawny=company_dict.get("legal_status", "NIEZNANY"),
-                    data_rozpoczecia=datetime.date.fromisoformat(company_dict["start_date"]) if company_dict.get("start_date") else None,
-                    status_vat=company_dict.get("vat_status", "NIEZNANY"),
-                    rachunek_na_bialej_liscie=company_dict.get("account_on_whitelist", False),
-                    share_capital=100000,
-                    has_bailiff_proceedings=False
-                )
-                
-                cdata = asyncio.run(enrich(cdata))
+                from services.verification_manager import verify_contractor
+                cdata = asyncio.run(verify_contractor(nip))
                 score_data = cdata.scoring
                 
                 score = score_data['total_score']

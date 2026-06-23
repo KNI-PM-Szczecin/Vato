@@ -17,29 +17,54 @@ async def verify_contractor(raw_nip: str, selected_country: str = "PL", bank_acc
     )
     
     if country_code == "PL":
-        print(f"\nIdentyfikacja typu dzialanosci w REGON ...")
-        try:
-            typ = await regon_client.identify(clean_nip)
-        except Exception as e:
-            print(f"Blad Regon: {e}")
-            typ = "UNKNOWN"
-            
-        if typ == "KRS":
-            print(f"\nPobieranie danych z KRS ...")
-            krs_data = await krs_client.fetch_krs_data(clean_nip)
-            contractor = contractor.model_copy(update=krs_data)
-        elif typ == "CEIDG":
-            print(f"\nPobieranie danych z CEIDG ...")
-            ceidg_data = await ceidg_client.fetch_ceidg_data(clean_nip)
-            contractor = contractor.model_copy(update=ceidg_data)
-            
-        print(f"Sprawdzanie bialej listy KRS ...")
+        print(f"\nSprawdzanie bialej listy VAT (Ministerstwo Finansow) ...")
         vat_data = await vat_client.fetch_vat_data(clean_nip, bank_account)
         contractor = contractor.model_copy(update=vat_data)
+        
+        krs_number = vat_data.get("krs_number")
+        
+        if krs_number:
+            print(f"\nPobieranie danych z KRS (Numer KRS: {krs_number}) ...")
+            krs_data = await krs_client.fetch_krs_data(clean_nip, krs_numer=krs_number)
+            contractor = contractor.model_copy(update=krs_data)
+        else:
+            print(f"\nBrak numeru KRS na bialej liscie. Identyfikacja typu dzialanosci...")
+            try:
+                typ = await regon_client.identify(clean_nip)
+            except Exception as e:
+                print(f"Blad Regon: {e}")
+                typ = "UNKNOWN"
+                
+            if typ == "KRS":
+                print(f"\nPobieranie danych z KRS ...")
+                krs_data = await krs_client.fetch_krs_data(clean_nip)
+                contractor = contractor.model_copy(update=krs_data)
+            elif typ == "CEIDG":
+                print(f"\nPobieranie danych z CEIDG ...")
+                ceidg_data = await ceidg_client.fetch_ceidg_data(clean_nip)
+                contractor = contractor.model_copy(update=ceidg_data)
+            elif typ == "UNKNOWN":
+                print(f"REGON niedostepny. Proba weryfikacji w KRS/CEIDG...")
+                krs_data = await krs_client.fetch_krs_data(clean_nip)
+                if krs_data:
+                    print(f"Wykryto podmiot w KRS.")
+                    contractor = contractor.model_copy(update=krs_data)
+                else:
+                    ceidg_data = await ceidg_client.fetch_ceidg_data(clean_nip)
+                    if ceidg_data:
+                        print(f"Wykryto podmiot w CEIDG.")
+                        contractor = contractor.model_copy(update=ceidg_data)
         
     else:
         print(f"\nPobieranie danych z VIES ...")
         contractor = await vies_client.enrich(contractor)
+        
+    print(f"\nWeryfikacja cyfrowa (strona WWW, SSL, wiek domeny) ...")
+    try:
+        from services import web_verifier
+        contractor = await web_verifier.enrich_with_web_data(contractor)
+    except Exception as e:
+        print(f"Błąd weryfikacji cyfrowej: {e}")
     
     print(f"\nUruchamianie algorytmu scoringowego ...")
     contractor = await scorer.enrich(contractor)

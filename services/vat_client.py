@@ -26,6 +26,9 @@ async def fetch_vat_data(nip: str, bank_account: str | None = None) -> dict:
 
         subject = data.get("result", {}).get("subject", {})
         vat_status = subject.get("statusVat", "NIEZNANY")
+        legal_name = subject.get("name", "").strip()
+        krs_number = subject.get("krs", "")
+        regon_number = subject.get("regon", "")
 
         on_whitelist = False
         if bank_account:
@@ -33,7 +36,15 @@ async def fetch_vat_data(nip: str, bank_account: str | None = None) -> dict:
             normalized = bank_account.replace(" ", "")
             on_whitelist = any(acc.replace(" ", "") == normalized for acc in accounts)
 
-        return {"vat_status": vat_status, "account_on_whitelist": on_whitelist}
+        res = {
+            "status_vat": vat_status,
+            "rachunek_na_bialej_liscie": on_whitelist,
+            "krs_number": krs_number.strip() if krs_number else None,
+            "regon_number": regon_number.strip() if regon_number else None
+        }
+        if legal_name:
+            res["legal_name"] = legal_name
+        return res
 
     except Exception:
         return {"vat_status": "UNKNOWN", "account_on_whitelist": False}
@@ -42,3 +53,4 @@ async def fetch_vat_data(nip: str, bank_account: str | None = None) -> dict:
 async def enrich(data: ContractorData) -> ContractorData:
     result = await fetch_vat_data(data.nip, data.bank_account)
     return data.model_copy(update=result)
+

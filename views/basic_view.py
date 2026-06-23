@@ -2,6 +2,7 @@ import base64
 import os
 import customtkinter as ctk
 import re
+import datetime
 from views.popup import PopupMessage
 import api_test
 from services.email_service import EmailService
@@ -112,22 +113,9 @@ class BasicView(ctk.CTkFrame):
     def _async_validate(self, nip, method):
         try:
             import asyncio
-            from models.contractor import ContractorData
-            from scoring.scorer import enrich
-            import datetime
+            from services.verification_manager import verify_contractor
             
-            company_dict = api_test.fetch_company_data(nip)
-            cdata = ContractorData(
-                nip=company_dict["nip"],
-                status_prawny=company_dict.get("legal_status", "NIEZNANY"),
-                data_rozpoczecia=datetime.date.fromisoformat(company_dict["start_date"]) if company_dict.get("start_date") else None,
-                status_vat=company_dict.get("vat_status", "NIEZNANY"),
-                rachunek_na_bialej_liscie=company_dict.get("account_on_whitelist", False),
-                share_capital=100000,
-                has_bailiff_proceedings=False
-            )
-            
-            cdata = asyncio.run(enrich(cdata))
+            cdata = asyncio.run(verify_contractor(nip))
             score_data = cdata.scoring
             
             total = score_data['total_score']
@@ -208,24 +196,9 @@ class BasicView(ctk.CTkFrame):
     def _async_report(self, nip, user_email):
         try:
             import asyncio
-            from models.contractor import ContractorData
-            from scoring.scorer import enrich
-            import datetime
-            import re as _re
+            from services.verification_manager import verify_contractor
 
-            company_dict = api_test.fetch_company_data(nip)
-            company_name = api_test.fetch_company_name(nip)
-            
-            cdata = ContractorData(
-                nip=company_dict["nip"],
-                status_prawny=company_dict.get("legal_status", "NIEZNANY"),
-                data_rozpoczecia=datetime.date.fromisoformat(company_dict["start_date"]) if company_dict.get("start_date") else None,
-                status_vat=company_dict.get("vat_status", "NIEZNANY"),
-                rachunek_na_bialej_liscie=company_dict.get("account_on_whitelist", False),
-                share_capital=100000,
-                has_bailiff_proceedings=False
-            )
-            cdata = asyncio.run(enrich(cdata))
+            cdata = asyncio.run(verify_contractor(nip))
             score_data = cdata.scoring
 
             total_score = score_data['total_score']
@@ -251,6 +224,7 @@ class BasicView(ctk.CTkFrame):
             current_year = datetime.date.today().year
             report_date = datetime.datetime.now().strftime('%d.%m.%Y')
             report_time = datetime.datetime.now().strftime('%H:%M')
+            company_name = cdata.legal_name
             company_display = company_name.title() if company_name != "---" else "—"
 
             results_rows_html = ""
@@ -310,7 +284,7 @@ class BasicView(ctk.CTkFrame):
       <div style="display:table;width:100%;padding:16px 20px;background:{bg_color};border-radius:10px;border:1px solid {border_color};margin-bottom:22px;box-sizing:border-box;">
         <div style="display:table-cell;text-align:center;padding-right:18px;border-right:1px solid {border_color};width:90px;vertical-align:middle;">
           <p style="margin:0;font-size:36px;font-weight:800;color:{text_color};line-height:1;">{total_score}</p>
-          <p style="margin:3px 0 0;font-size:10px;color:#aaa;letter-spacing:1px;text-transform:uppercase;">/ 60 pkt</p>
+          <p style="margin:3px 0 0;font-size:10px;color:#aaa;letter-spacing:1px;text-transform:uppercase;">/ 100 pkt</p>
         </div>
         <div style="display:table-cell;padding-left:18px;vertical-align:middle;">
           <p style="margin:0;font-size:15px;font-weight:700;color:{text_color};">{recommendation}</p>
@@ -348,12 +322,29 @@ class BasicView(ctk.CTkFrame):
 </html>
 """
 
-            email_service = EmailService()
-            email_service.send_report(
-                recipient_email=user_email,
-                subject=t("email.subject", nip=nip),
-                html_content=html_message
-            )
+            import tempfile
+            from utils.pdf_export import export_results_pdf
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                pdf_path = tmp.name
+
+            try:
+                export_results_pdf([cdata], pdf_path)
+                
+                email_service = EmailService()
+                email_service.send_report(
+                    recipient_email=user_email,
+                    subject=t("email.subject", nip=nip),
+                    html_content=html_message,
+                    attachment_path=pdf_path,
+                    attachment_name="raport.pdf"
+                )
+            finally:
+                try:
+                    import os
+                    os.unlink(pdf_path)
+                except Exception:
+                    pass
             
             quick_report = t("basic.result_score", total=total_score, recommendation=recommendation)
             details = " ".join([f"- {d}" for d in score_data["justifications"]])

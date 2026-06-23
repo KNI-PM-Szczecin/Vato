@@ -29,6 +29,7 @@ class EmailService:
         subject: str = "Raport KYC",
         html_content: str = "",
         attachment_path: str | None = None,
+        attachment_name: str | None = None,
     ) -> bool:
         """
         Sends an email report to the specified recipient, optionally with an attachment.
@@ -55,10 +56,11 @@ class EmailService:
             msg.attach(MIMEText(html_content, "html" if is_html else "plain", "utf-8"))
 
             if attachment_path:
+                att_name = attachment_name or os.path.basename(attachment_path)
                 with open(attachment_path, "rb") as f:
-                    part = MIMEApplication(f.read(), Name=os.path.basename(attachment_path))
+                    part = MIMEApplication(f.read(), Name=att_name)
                     part["Content-Disposition"] = (
-                        f'attachment; filename="{os.path.basename(attachment_path)}"'
+                        f'attachment; filename="{att_name}"'
                     )
                     msg.attach(part)
 

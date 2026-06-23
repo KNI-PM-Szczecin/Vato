@@ -17,25 +17,25 @@ STATUS_MAP = {
 }
 
 
-async def fetch_krs_data(nip: str) -> dict:
+async def fetch_krs_data(nip: str, krs_numer: str | None = None) -> dict:
     try:
         async with httpx.AsyncClient(timeout=12) as client:
-            # Step 1: find KRS number by NIP
-            search = await client.get(
-                f"{BASE}/podmiot/search",
-                params={"nip": nip, "format": "json"},
-            )
-            search.raise_for_status()
-            items = search.json()
+            if not krs_numer:
+                # Step 1: find KRS number by NIP
+                search = await client.get(
+                    f"{BASE}/podmiot/search",
+                    params={"nip": nip, "format": "json"},
+                )
+                search.raise_for_status()
+                items = search.json()
 
-            krs_numer = None
-            if isinstance(items, list) and items:
-                krs_numer = items[0].get("nrKrs") or items[0].get("krs")
-            elif isinstance(items, dict):
-                # some API versions wrap in {"odpis": [...]} or {"results": [...]}
-                lista = items.get("odpis") or items.get("results") or []
-                if lista:
-                    krs_numer = lista[0].get("nrKrs") or lista[0].get("krs")
+                if isinstance(items, list) and items:
+                    krs_numer = items[0].get("nrKrs") or items[0].get("krs")
+                elif isinstance(items, dict):
+                    # some API versions wrap in {"odpis": [...]} or {"results": [...]}
+                    lista = items.get("odpis") or items.get("results") or []
+                    if lista:
+                        krs_numer = lista[0].get("nrKrs") or lista[0].get("krs")
 
             if not krs_numer:
                 return {}
@@ -69,18 +69,33 @@ async def fetch_krs_data(nip: str) -> dict:
             if any(klucz in dzial4 for klucz in klucze_egzekucji) or any("egzekuc" in str(k).lower() for k in dzial4.keys()):
                 has_bailiff = True
 
-        data_rej = None
-        data_rej_str = info.get("dataRejestracjiWKRS", "")
-        if data_rej_str:
+        header = body.get("odpis", {}).get("naglowekA", {})
+        reg_date = None
+        reg_date_str = header.get("dataRejestracjiWKRS", "")
+        if reg_date_str:
             try:
-                data_rej = date.fromisoformat(data_rej_str[:10])
+                # Format is usually DD.MM.YYYY, but handle ISO format YYYY-MM-DD too just in case
+                if "-" in reg_date_str:
+                    reg_date = date.fromisoformat(reg_date_str[:10])
+                else:
+                    from datetime import datetime
+                    reg_date = datetime.strptime(reg_date_str, "%d.%m.%Y").date()
             except ValueError:
                 pass
 
         status_raw = info.get("statusPodmiotu", "").upper()
         status = STATUS_MAP.get(status_raw, "AKTYWNA")
+        legal_name = info.get("nazwa", "").strip()
 
-        return {"legal_status": status, "start_date": data_rej}
+        res = {
+            "status_prawny": status,
+            "data_rozpoczecia": reg_date,
+            "share_capital": share_capital,
+            "has_bailiff_proceedings": has_bailiff
+        }
+        if legal_name:
+            res["legal_name"] = legal_name
+        return res
 
     except Exception:
         return {}
