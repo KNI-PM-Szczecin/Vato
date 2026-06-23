@@ -1,0 +1,32 @@
+# Ustawienie automatycznej normalizacji końcówek linii (CRLF -> LF)
+* text=auto
+
+# Reguły dla kodu backendowego
+*.py text diff=python
+*.sh text eol=lf
+*.bat text eol=crlf
+
+# Pliki konfiguracyjne i dokumentacja
+*.md text diff=markdown
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+.env* text eol=lf
+
+# Konfiguracja pod przyszłe pliki GUI (Frontend)
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.svg text eol=lf
+
+# Pliki binarne (nie ulegają modyfikacji końcówek linii)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
