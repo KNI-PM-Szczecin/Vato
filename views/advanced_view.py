@@ -16,7 +16,7 @@ class AdvancedView(ctk.CTkFrame):
         self.files_card.grid(row=0, column=0, sticky="ew", pady=(0, 15))
         self.files_card.grid_columnconfigure(1, weight=1)
 
-        self.files_title = ctk.CTkLabel(self.files_card, text="Konfiguracja Plików (Masowa Walidacja)", font=ctk.CTkFont(size=16, weight="bold"))
+        self.files_title = ctk.CTkLabel(self.files_card, text="Konfiguracja Plików (Walidacja Wsadowa)", font=ctk.CTkFont(size=16, weight="bold"))
         self.files_title.grid(row=0, column=0, columnspan=3, sticky="w", padx=20, pady=(15, 10))
 
         # Source
@@ -103,7 +103,7 @@ class AdvancedView(ctk.CTkFrame):
             PopupMessage("Brak plików", "Wybierz plik źródłowy i docelowy.", status="warning")
             return
             
-        self.append_log("Rozpoczynanie masowej walidacji (symulacja w tle)...")
+        self.append_log("Rozpoczynanie walidacji wsadowej (symulacja w tle)...")
         # Placeholder on thread
         threading.Thread(target=self._simulate_processing, daemon=True).start()
 
@@ -129,5 +129,5 @@ class AdvancedView(ctk.CTkFrame):
             PopupMessage("Brak plików", "Wybierz plik źródłowy i docelowy.", status="warning")
             return
 
-        self.append_log(f"Masowa walidacja z raportem na adres: {user_email}...")
+        self.append_log(f"Walidacja wsadowa z raportem na adres: {user_email}...")
         threading.Thread(target=self._simulate_processing, daemon=True).start()
