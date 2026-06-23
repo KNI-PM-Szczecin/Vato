@@ -1,7 +1,7 @@
 import customtkinter as ctk
 import re
 import api_test
-from email_service import EmailService
+from services.email_service import EmailService
 from gui.popup import PopupMessage
 
 
@@ -86,9 +86,10 @@ class BasicView(ctk.CTkFrame):
             email_mockup += f"* {detail}\n"
         email_mockup += "-" * 40 + "\n"
         email_mockup += "Wiadomość wygenerowana automatycznie."
-
+        
+        # Wysyłka za pomocą nowej klasy (która drukuje w konsoli)
         email_service = EmailService()
-        email_service.send_raport(
+        email_service.send_report(
             recipient_email=user_email,
             subject=f"Raport weryfikacji KYC - {nip}",
             html_content=email_mockup

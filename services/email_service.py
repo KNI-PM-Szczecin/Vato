@@ -4,7 +4,7 @@ class EmailService:
         # lub połączyć się z zewnętrznym API do maili np. SendGrid / Resend.
         pass
 
-    def send_raport(self, recipient_email: str, subject: str, html_content: str, attachment_path: str = None):
+    def send_report(self, recipient_email: str, subject: str, html_content: str, attachment_path: str = None):
         """
         Symuluje wysyłanie e-maila z ładnym formatowaniem HTML, CSS i ewentualnymi załącznikami.
         Na tym etapie tylko wypisuje w konsoli informacje o wysyłce.
