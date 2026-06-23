@@ -1,9 +1,19 @@
+import base64
+import os
 import customtkinter as ctk
 import re
 from views.popup import PopupMessage
 import api_test
 from services.email_service import EmailService
 import threading
+
+_LOGO_B64 = ""
+_LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "vato_black.png")
+try:
+    with open(_LOGO_PATH, "rb") as _f:
+        _LOGO_B64 = base64.b64encode(_f.read()).decode("ascii")
+except OSError:
+    pass
 
 class BasicView(ctk.CTkFrame):
     def __init__(self, master):
@@ -124,11 +134,19 @@ class BasicView(ctk.CTkFrame):
             details = "\n".join([f"- {d}" for d in score_data["justifications"]])
             full_report = f"--- WYNIK DLA {method}: {nip} ---\n{quick_report}\n\nSzczegóły:\n{details}"
             
-            self.after(0, lambda: self.append_result(full_report))
-            self.after(0, lambda: PopupMessage(f"Walidacja zakończona", quick_report, status=status_color))
+            def _show_validate_result():
+                self.append_result(full_report)
+                self.update_idletasks()
+                PopupMessage("Walidacja zakończona", quick_report, status=status_color)
+
+            self.after(0, _show_validate_result)
         except Exception as e:
-            self.after(0, lambda: PopupMessage("Błąd API", f"Wystąpił błąd podczas walidacji: {str(e)}", status="error"))
-            self.after(0, lambda: self.append_result(f"Błąd krytyczny: {str(e)}"))
+            captured = str(e)
+            def _show_error():
+                self.append_result(f"Błąd krytyczny: {captured}")
+                self.update_idletasks()
+                PopupMessage("Błąd API", f"Wystąpił błąd podczas walidacji: {captured}", status="error")
+            self.after(0, _show_error)
         finally:
             self.after(0, lambda: self.quick_validate_btn.configure(state="normal", text="Szybka walidacja"))
 
@@ -187,19 +205,9 @@ class BasicView(ctk.CTkFrame):
             from models.contractor import ContractorData
             from scoring.scorer import enrich
             import datetime
-            
-            company_dict = api_test.fetch_company_data(nip)
-            cdata = ContractorData(
-                nip=company_dict["nip"],
-                status_prawny=company_dict.get("legal_status", "NIEZNANY"),
-                data_rozpoczecia=datetime.date.fromisoformat(company_dict["start_date"]) if company_dict.get("start_date") else None,
-                status_vat=company_dict.get("vat_status", "NIEZNANY"),
-                rachunek_na_bialej_liscie=company_dict.get("account_on_whitelist", False),
-                share_capital=100000,
-                has_bailiff_proceedings=False
-            )
-            cdata = asyncio.run(enrich(cdata))
-            score_data = cdata.scoring
+            company_name = api_test.fetch_company_name(nip)
+            company_data = api_test.fetch_company_data(nip)
+            result = api_test.evaluate_contractor(company_data)
 
             total_score = score_data['total_score']
             recommendation = score_data['risk_level']
@@ -221,113 +229,87 @@ class BasicView(ctk.CTkFrame):
                 text_color = "#c62828"
                 status_color = "error"
 
-            # Budowanie listy szczegółów oceny w formacie HTML
-            details_items = ""
-            for detail in score_data["justifications"]:
-                details_items += f"<li>{detail}</li>"
-
             current_year = datetime.date.today().year
 
-            # Szablon wiadomości e-mail w formacie HTML w języku polskim
+            # Tytuł firmy — title case dla czytelności (API zwraca CAPS)
+            company_display = company_name.title() if company_name != "---" else "—"
+
+            # Tabela kryteriów z image.png — dynamiczne zaznaczenie "5 lat działalności"
+            years_in_biz = result.get("2_experience", 0)
+
+            def criterion_badge(met: bool | None) -> str:
+                if met is None:
+                    return '<span style="background:#f0f0f0;color:#aaa;padding:3px 10px;border-radius:20px;font-size:11px;">brak danych</span>'
+                if met:
+                    return '<span style="background:#e6f4ea;color:#1e7e34;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">&#10003; Spełnione</span>'
+                return '<span style="background:#fdecea;color:#c0392b;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">&#10007; Niespełnione</span>'
+
+            criteria_rows = [
+                ("Ma więcej niż 100 sprawnych pojazdów", "+10 pkt", None),
+                ("Mniej niż 15% floty jest w serwisie", "−5 pkt", None),
+                ("Kapitał zakładowy przynajmniej 20% obrotów", "+5 pkt", None),
+                ("Brak komornika na głowie", "+5 pkt", None),
+                ("5 lat działalności", "+10 pkt", years_in_biz == 10),
+                ("10 lat działalności", "0 pkt", None),
+            ]
+            criteria_html = ""
+            for i, (lbl, pts, met) in enumerate(criteria_rows):
+                row_bg = "#f9fafc" if i % 2 == 0 else "#ffffff"
+                criteria_html += (
+                    f'<tr style="background:{row_bg};">'
+                    f'<td style="padding:10px 14px;font-size:13px;color:#333;border-bottom:1px solid #eef0f4;">{lbl}</td>'
+                    f'<td style="padding:10px 14px;font-size:12px;font-weight:700;color:#555;text-align:center;border-bottom:1px solid #eef0f4;white-space:nowrap;">{pts}</td>'
+                    f'<td style="padding:10px 14px;text-align:center;border-bottom:1px solid #eef0f4;">{criterion_badge(met)}</td>'
+                    f'</tr>'
+                )
+
+            # Tabela wyników weryfikacji — zastępuje terminal, czytelna dla nietech. użytkowników
+            category_map = [
+                ("1_legal_status", "Status prawny",   "Rejestracja i aktywność gospodarcza"),
+                ("2_experience",   "Doświadczenie",   "Staż firmy na rynku"),
+                ("3_vat_taxes",    "Podatki / VAT",   "Status VAT i Biała Lista MF"),
+                ("4_stability",    "Stabilność",      "Zmiany zarządu i adresu siedziby"),
+            ]
+            import re as _re
+            results_rows_html = ""
+            for i, (key, cat_name, cat_desc) in enumerate(category_map):
+                score_val = result.get(key, 0)
+                detail_str = result["details"][i] if i < len(result["details"]) else ""
+                desc = _re.sub(r'^[^:]+:\s*', '', detail_str).rstrip(".")
+
+                if score_val > 0:
+                    s_color, s_bg, s_str = "#1e7e34", "#e6f4ea", f"+{score_val}"
+                elif score_val < 0:
+                    s_color, s_bg, s_str = "#c0392b", "#fdecea", str(score_val)
+                else:
+                    s_color, s_bg, s_str = "#666", "#f5f5f5", "0"
+
+                row_bg = "#f9fafc" if i % 2 == 0 else "#ffffff"
+                results_rows_html += (
+                    f'<tr style="background:{row_bg};">'
+                    f'<td style="padding:12px 14px;border-bottom:1px solid #eef0f4;width:130px;">'
+                    f'  <p style="margin:0;font-size:13px;font-weight:700;color:#1e3c72;">{cat_name}</p>'
+                    f'  <p style="margin:2px 0 0;font-size:11px;color:#aaa;">{cat_desc}</p>'
+                    f'</td>'
+                    f'<td style="padding:12px 14px;font-size:13px;color:#444;border-bottom:1px solid #eef0f4;line-height:1.45;">{desc}</td>'
+                    f'<td style="padding:12px 14px;text-align:center;border-bottom:1px solid #eef0f4;white-space:nowrap;">'
+                    f'  <span style="background:{s_bg};color:{s_color};padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;">{s_str} pkt</span>'
+                    f'</td>'
+                    f'</tr>'
+                )
+
+            logo_img = (
+                f'<img src="data:image/png;base64,{_LOGO_B64}" alt="Vato" '
+                f'style="max-width:160px;height:auto;display:block;margin:0 auto;">'
+                if _LOGO_B64 else
+                '<p style="font-size:22px;font-weight:700;text-align:center;color:#111;">VATO</p>'
+            )
+
             html_message = f"""<!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <title>Raport weryfikacji KYC - {nip}</title>
-    <style>
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f6f9;
-            color: #333333;
-            margin: 0;
-            padding: 0;
-        }}
-        .container {{
-            max-width: 600px;
-            margin: 20px auto;
-            background: #ffffff;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            border: 1px solid #e1e4e8;
-        }}
-        .header {{
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: #ffffff;
-            padding: 30px 20px;
-            text-align: center;
-        }}
-        .header h1 {{
-            margin: 0;
-            font-size: 24px;
-            font-weight: 700;
-        }}
-        .header p {{
-            margin: 5px 0 0;
-            font-size: 14px;
-            opacity: 0.9;
-        }}
-        .content {{
-            padding: 30px 25px;
-        }}
-        .score-box {{
-            text-align: center;
-            padding: 20px;
-            background-color: {bg_color};
-            border-radius: 6px;
-            margin-bottom: 25px;
-            border: 1px solid {border_color};
-        }}
-        .score-val {{
-            font-size: 36px;
-            font-weight: 700;
-            color: {text_color};
-            margin: 0;
-        }}
-        .score-label {{
-            font-size: 14px;
-            color: #666666;
-            margin: 5px 0 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }}
-        .score-recommendation {{
-            font-size: 16px;
-            font-weight: 600;
-            color: {text_color};
-            margin: 10px 0 0;
-        }}
-        .section-title {{
-            font-size: 18px;
-            font-weight: 600;
-            border-bottom: 2px solid #e1e4e8;
-            padding-bottom: 8px;
-            margin-bottom: 15px;
-            color: #1e3c72;
-        }}
-        .details-list {{
-            list-style: none;
-            padding: 0;
-            margin: 0 0 25px 0;
-        }}
-        .details-list li {{
-            padding: 10px 12px;
-            border-bottom: 1px solid #f0f2f5;
-            font-size: 14px;
-            line-height: 1.5;
-        }}
-        .details-list li:last-child {{
-            border-bottom: none;
-        }}
-        .footer {{
-            background-color: #f8fafc;
-            padding: 20px;
-            text-align: center;
-            font-size: 12px;
-            color: #888888;
-            border-top: 1px solid #e1e4e8;
-        }}
-    </style>
+  <meta charset="utf-8">
+  <title>Raport weryfikacji KYC — {nip}</title>
 </head>
 <body>
     <div class="container">
@@ -347,11 +329,48 @@ class BasicView(ctk.CTkFrame):
                 {details_items}
             </ul>
         </div>
-        <div class="footer">
-            Wiadomość wygenerowana automatycznie przez aplikację Vato.<br>
-            &copy; {current_year} Vato KYC Tool
+        <div style="display:table-cell;padding-left:18px;vertical-align:middle;">
+          <p style="margin:0;font-size:15px;font-weight:700;color:{text_color};">{recommendation}</p>
+          <p style="margin:5px 0 2px;font-size:14px;font-weight:600;color:#333;">{company_display}</p>
+          <p style="margin:0;font-size:11px;color:#aaa;">NIP:&nbsp;{nip}&nbsp;&nbsp;·&nbsp;&nbsp;{datetime.date.today().strftime('%d.%m.%Y')}</p>
         </div>
+      </div>
+
+      <!-- TABELA KRYTERIÓW OCENY -->
+      <p style="font-size:11px;font-weight:700;color:#1e3c72;text-transform:uppercase;letter-spacing:1.2px;border-bottom:2px solid #e8eaf0;padding-bottom:7px;margin:0 0 10px;">Kryteria oceny</p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:4px;border-radius:8px;overflow:hidden;border:1px solid #e8eaf0;">
+        <thead>
+          <tr style="background:#1e3c72;color:#fff;">
+            <th style="padding:9px 13px;text-align:left;font-size:12px;font-weight:600;">Kryterium</th>
+            <th style="padding:9px 13px;text-align:center;font-size:12px;font-weight:600;width:60px;">Pkt</th>
+            <th style="padding:9px 13px;text-align:center;font-size:12px;font-weight:600;width:130px;">Status</th>
+          </tr>
+        </thead>
+        <tbody>{criteria_html}</tbody>
+      </table>
+      <p style="font-size:10px;color:#ccc;margin:4px 0 22px;">* Kryteria "brak danych" wymagają weryfikacji z zewnętrznych źródeł (dane flotowe, kapitałowe).</p>
+
+      <!-- WYNIKI WERYFIKACJI — czytelna tabelka dla nietech. użytkowników -->
+      <p style="font-size:11px;font-weight:700;color:#1e3c72;text-transform:uppercase;letter-spacing:1.2px;border-bottom:2px solid #e8eaf0;padding-bottom:7px;margin:0 0 10px;">Wyniki weryfikacji</p>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e8eaf0;border-radius:8px;overflow:hidden;">
+        <thead>
+          <tr style="background:#1e3c72;color:#fff;">
+            <th style="padding:9px 13px;text-align:left;font-size:12px;font-weight:600;width:130px;">Obszar</th>
+            <th style="padding:9px 13px;text-align:left;font-size:12px;font-weight:600;">Opis</th>
+            <th style="padding:9px 13px;text-align:center;font-size:12px;font-weight:600;width:80px;">Wynik</th>
+          </tr>
+        </thead>
+        <tbody>{results_rows_html}</tbody>
+      </table>
+
     </div>
+
+    <!-- FOOTER -->
+    <div style="background:#f5f7fb;padding:14px 20px;text-align:center;font-size:10px;color:#bbb;border-top:1px solid #e8eaf0;letter-spacing:0.3px;">
+      Wygenerowano automatycznie przez <strong style="color:#999;">Vato KYC Tool</strong> &nbsp;·&nbsp; &copy; {current_year}
+    </div>
+
+  </div>
 </body>
 </html>
 """
@@ -367,10 +386,21 @@ class BasicView(ctk.CTkFrame):
             gui_text = f"--- WYNIK DLA NIP: {nip} ---\nFirma uzyskała {total_score}/60 pkt.\nRekomendacja: {recommendation}\n\nSzczegóły:\n"
             gui_text += "\n".join([f"- {d}" for d in score_data["justifications"]])
 
-            self.after(0, lambda: PopupMessage("Sukces", f"Raport wygenerowany i wysłany na {user_email}.", status=status_color))
-            self.after(0, lambda: self.append_result(f"Raport pomyślnie wysłany na {user_email}.\n\n{gui_text}"))
+            success_msg = f"Raport pomyślnie wysłany na {user_email}.\n\n{gui_text}"
+            popup_msg = f"Raport wygenerowany i wysłany na {user_email}."
+
+            def _show_report_result():
+                self.append_result(success_msg)
+                self.update_idletasks()
+                PopupMessage("Sukces", popup_msg, status=status_color)
+
+            self.after(0, _show_report_result)
         except Exception as e:
-            self.after(0, lambda: PopupMessage("Błąd wysyłki", f"Nie udało się wysłać raportu: {str(e)}", status="error"))
-            self.after(0, lambda: self.append_result(f"Błąd wysyłki raportu: {str(e)}"))
+            captured = str(e)
+            def _show_report_error():
+                self.append_result(f"Błąd wysyłki raportu: {captured}")
+                self.update_idletasks()
+                PopupMessage("Błąd wysyłki", f"Nie udało się wysłać raportu: {captured}", status="error")
+            self.after(0, _show_report_error)
         finally:
             self.after(0, lambda: self.generate_report_btn.configure(state="normal", text="Generuj Raport i Wyślij"))
