@@ -13,62 +13,62 @@ def evaluate_contractor(data: ContractorData) -> ScoreResult:
         months = 0
 
     status = data.legal_status
-    if status == "AKTYWNA":
+    if status == "ACTIVE":
         if months <= 3:
-            result.details.append("Status (0 pkt): Aktywna, założona niedawno — podwyższone ryzyko.")
+            result.details.append("Legal status (0 pts): Active but registered recently — elevated risk.")
         else:
             result.legal_status = 10
-            result.details.append("Status (+10 pkt): Działalność aktywna.")
-    elif status == "ZAWIESZONA":
+            result.details.append("Legal status (+10 pts): Active business.")
+    elif status == "SUSPENDED":
         result.legal_status = -5
-        result.details.append("Status (-5 pkt): Działalność zawieszona.")
-    elif status in ("ZAMKNIETA", "UPADLOSC", "LIKWIDACJA"):
+        result.details.append("Legal status (-5 pts): Business suspended.")
+    elif status in ("CLOSED", "BANKRUPTCY", "LIQUIDATION"):
         result.legal_status = -10
-        result.details.append(f"Status (-10 pkt): Działalność w stanie {status}.")
+        result.details.append(f"Legal status (-10 pts): Business in state: {status.lower()}.")
     else:
-        result.details.append("Status (0 pkt): Brak danych o statusie.")
+        result.details.append("Legal status (0 pts): No status data available.")
 
     # 2. Experience
     if data.frequent_legal_form_changes:
         result.experience = -5
-        result.details.append("Doświadczenie (-5 pkt): Częste zmiany formy prawnej.")
+        result.details.append("Experience (-5 pts): Frequent changes of legal form.")
     else:
         years = months / 12.0
         if years > 5:
             result.experience = 10
-            result.details.append("Doświadczenie (+10 pkt): Firma istnieje powyżej 5 lat.")
+            result.details.append("Experience (+10 pts): Company has been operating for over 5 years.")
         elif years >= 2:
             result.experience = 5
-            result.details.append("Doświadczenie (+5 pkt): Firma istnieje od 2 do 5 lat.")
+            result.details.append("Experience (+5 pts): Company has been operating for 2–5 years.")
         else:
-            result.details.append("Doświadczenie (0 pkt): Firma istnieje krócej niż 2 years.")
+            result.details.append("Experience (0 pts): Company has been operating for less than 2 years.")
 
-    # 3. VAT Taxes / Whitelist
+    # 3. VAT / Whitelist
     if data.vat_status == "CZYNNY" and data.account_on_whitelist:
         result.vat_taxes = 10
-        result.details.append("Podatki (+10 pkt): Czynny podatnik VAT, rachunek na Białej Liście.")
+        result.details.append("VAT (+10 pts): Active VAT payer, bank account on the MF Whitelist.")
     elif data.vat_status == "ZWOLNIONY":
-        result.details.append("Podatki (0 pkt): Podmiot zwolniony z VAT.")
+        result.details.append("VAT (0 pts): Entity VAT-exempt.")
     elif data.vat_status == "WYKRESLONY" or (
         data.vat_status == "CZYNNY" and not data.account_on_whitelist and data.bank_account
     ):
         result.vat_taxes = -10
-        result.details.append("Podatki (-10 pkt): Wykreślony z VAT lub konto niezgodne z Białą Listą!")
+        result.details.append("VAT (-10 pts): Removed from VAT register or bank account not on the Whitelist!")
     else:
-        result.details.append("Podatki (0 pkt): Brak danych VAT.")
+        result.details.append("VAT (0 pts): No VAT data available.")
 
     # 4. Stability
     if data.board_changes_last_3_months:
         result.stability = -10
-        result.details.append("Stabilność (-10 pkt): Pełna wymiana zarządu i adresu w ostatnich 3 msc — WYSOKIE RYZYKO.")
+        result.details.append("Stability (-10 pts): Full board and address change in last 3 months — HIGH RISK.")
     elif data.address_changes_last_year > 2:
         result.stability = -5
-        result.details.append("Stabilność (-5 pkt): Więcej niż 2 zmiany adresu w ostatnim roku.")
+        result.details.append("Stability (-5 pts): More than 2 address changes in the last year.")
     elif data.address_changes_last_year == 0 and not data.board_changes_last_3_months:
         result.stability = 10
-        result.details.append("Stabilność (+10 pkt): Brak zmian zarządu i adresu.")
+        result.details.append("Stability (+10 pts): No board or address changes.")
     else:
-        result.details.append("Stabilność (0 pkt): Standardowe zmiany korporacyjne.")
+        result.details.append("Stability (0 pts): Minor standard corporate changes.")
 
     result.total = result.legal_status + result.experience + result.vat_taxes + result.stability
 

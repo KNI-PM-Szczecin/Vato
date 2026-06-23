@@ -1,55 +1,73 @@
 """
 KRS — public REST API, no key required.
-https://api-krs.ms.gov.pl/api/krs/OdpisAktualny/{krs}?rejestr=P&format=json
-We search by NIP via: https://api-krs.ms.gov.pl/api/krs/podmiot/search?nip={nip}
+Step 1: search by NIP to get KRS number.
+Step 2: fetch full record by KRS number.
 """
 import httpx
 from datetime import date
 from models.contractor import ContractorData
 
-
 BASE = "https://api-krs.ms.gov.pl/api/krs"
+
+STATUS_MAP = {
+    "AKTYWNA": "ACTIVE",
+    "W LIKWIDACJI": "LIQUIDATION",
+    "W UPADŁOŚCI": "BANKRUPTCY",
+    "WYKREŚLONA": "CLOSED",
+}
 
 
 async def fetch_krs_data(nip: str) -> dict:
-    """Returns partial ContractorData fields for a spółka."""
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=12) as client:
             # Step 1: find KRS number by NIP
-            search = await client.get(f"{BASE}/podmiot/search", params={"nip": nip})
+            search = await client.get(
+                f"{BASE}/podmiot/search",
+                params={"nip": nip, "format": "json"},
+            )
             search.raise_for_status()
-            items = search.json().get("copy_doc", {}).get("dane", {}).get("sections", {})
-            # Try direct NIP search endpoint
+            items = search.json()
+
+            krs_numer = None
+            if isinstance(items, list) and items:
+                krs_numer = items[0].get("nrKrs") or items[0].get("krs")
+            elif isinstance(items, dict):
+                # some API versions wrap in {"odpis": [...]} or {"results": [...]}
+                lista = items.get("odpis") or items.get("results") or []
+                if lista:
+                    krs_numer = lista[0].get("nrKrs") or lista[0].get("krs")
+
+            if not krs_numer:
+                return {}
+
+            # Step 2: fetch full record
             resp = await client.get(
-                f"{BASE}/OdpisAktualny/{nip}",
+                f"{BASE}/OdpisAktualny/{krs_numer}",
                 params={"rejestr": "P", "format": "json"},
             )
             if resp.status_code != 200:
                 return {}
             body = resp.json()
 
-        section1 = body.get("copy_doc", {}).get("dane", {}).get("section1", {})
-        info = section1.get("subject_data", {})
+        dzial1 = (
+            body.get("odpis", {})
+                .get("dane", {})
+                .get("dzial1", {})
+        )
+        info = dzial1.get("danePodmiotu", {})
 
-        reg_date_str = info.get("dataRejestracjiWKRS", "")
-        reg_date = None
-        if reg_date_str:
+        data_rej = None
+        data_rej_str = info.get("dataRejestracjiWKRS", "")
+        if data_rej_str:
             try:
-                reg_date = date.fromisoformat(reg_date_str[:10])
+                data_rej = date.fromisoformat(data_rej_str[:10])
             except ValueError:
                 pass
 
-        status_raw = info.get("subject_status", "")
-        status_map = {
-            "": "NIEZNANY",
-            "AKTYWNA": "AKTYWNA",
-            "W LIKWIDACJI": "LIKWIDACJA",
-            "W UPADŁOŚCI": "UPADLOSC",
-            "WYKREŚLONA": "ZAMKNIETA",
-        }
-        status = status_map.get(status_raw.upper(), "AKTYWNA")
+        status_raw = info.get("statusPodmiotu", "").upper()
+        status = STATUS_MAP.get(status_raw, "AKTYWNA")
 
-        return {"legal_status": status, "start_date": reg_date}
+        return {"legal_status": status, "start_date": data_rej}
 
     except Exception:
         return {}

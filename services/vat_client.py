@@ -36,7 +36,7 @@ async def fetch_vat_data(nip: str, bank_account: str | None = None) -> dict:
         return {"vat_status": vat_status, "account_on_whitelist": on_whitelist}
 
     except Exception:
-        return {"vat_status": "NIEZNANY", "account_on_whitelist": False}
+        return {"vat_status": "UNKNOWN", "account_on_whitelist": False}
 
 
 async def enrich(data: ContractorData) -> ContractorData:
