@@ -26,7 +26,7 @@ def send_report(
     smtp_from = os.getenv("SMTP_FROM", smtp_user)
 
     if not smtp_host or not smtp_user:
-        raise ValueError("Brak konfiguracji SMTP w pliku .env (SMTP_HOST, SMTP_USER, SMTP_PASSWORD).")
+        raise ValueError("Missing SMTP configuration in .env (SMTP_HOST, SMTP_USER, SMTP_PASSWORD).")
 
     # Generate attachment in temp file
     with tempfile.NamedTemporaryFile(delete=False, suffix=f".{'xlsx' if fmt == 'Excel' else 'pdf'}") as tmp:
@@ -36,12 +36,12 @@ def send_report(
         from utils.excel_export import export_results
         export_results(results, tmp_path)
         mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        filename = "raport_kontrahenci.xlsx"
+        filename = "contractor_report.xlsx"
     else:
         from utils.pdf_export import export_results_pdf
         export_results_pdf(results, tmp_path)
         mime_type = "application/pdf"
-        filename = "raport_kontrahenci.pdf"
+        filename = "contractor_report.pdf"
 
     # Build email
     msg = MIMEMultipart()
@@ -50,7 +50,7 @@ def send_report(
     msg["Subject"] = subject
 
     nip_list = ", ".join(r.nip for r in results)
-    body = f"W załączeniu raport weryfikacji kontrahentów ({nip_list}).\n\nVato — Weryfikator Kontrahentów"
+    body = f"Please find attached the contractor verification report ({nip_list}).\n\nVato — Contractor Verification Tool"
     msg.attach(MIMEText(body, "plain", "utf-8"))
 
     with open(tmp_path, "rb") as f:

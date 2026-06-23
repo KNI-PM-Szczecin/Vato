@@ -10,10 +10,10 @@ from models.contractor import ContractorData
 BASE = "https://api-krs.ms.gov.pl/api/krs"
 
 STATUS_MAP = {
-    "AKTYWNA": "AKTYWNA",
-    "W LIKWIDACJI": "LIKWIDACJA",
-    "W UPADŁOŚCI": "UPADLOSC",
-    "WYKREŚLONA": "ZAMKNIETA",
+    "AKTYWNA": "ACTIVE",
+    "W LIKWIDACJI": "LIQUIDATION",
+    "W UPADŁOŚCI": "BANKRUPTCY",
+    "WYKREŚLONA": "CLOSED",
 }
 
 
@@ -67,7 +67,7 @@ async def fetch_krs_data(nip: str) -> dict:
         status_raw = info.get("statusPodmiotu", "").upper()
         status = STATUS_MAP.get(status_raw, "AKTYWNA")
 
-        return {"status_prawny": status, "data_rozpoczecia": data_rej}
+        return {"legal_status": status, "start_date": data_rej}
 
     except Exception:
         return {}

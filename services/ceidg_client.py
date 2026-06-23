@@ -24,13 +24,13 @@ _HEADERS = {
 }
 
 STATUS_MAP = {
-    "AKTYWNA": "AKTYWNA",
-    "AKTYWNY": "AKTYWNA",
-    "ZAWIESZONA": "ZAWIESZONA",
-    "ZAWIESZONY": "ZAWIESZONA",
-    "WYKREŚLONA": "ZAMKNIETA",
-    "WYKREŚLONY": "ZAMKNIETA",
-    "WYKREŚLONA Z REJESTRU": "ZAMKNIETA",
+    "AKTYWNA": "ACTIVE",
+    "AKTYWNY": "ACTIVE",
+    "ZAWIESZONA": "SUSPENDED",
+    "ZAWIESZONY": "SUSPENDED",
+    "WYKREŚLONA": "CLOSED",
+    "WYKREŚLONY": "CLOSED",
+    "WYKREŚLONA Z REJESTRU": "CLOSED",
 }
 
 
@@ -53,7 +53,7 @@ async def _fetch_via_api(nip: str, api_key: str) -> dict:
 
         status = STATUS_MAP.get(firma.get("status", "").upper(), "NIEZNANY")
         data_rej = _parse_date(firma.get("dataRozpoczecia", ""))
-        return {"status_prawny": status, "data_rozpoczecia": data_rej}
+        return {"legal_status": status, "start_date": data_rej}
     except Exception:
         return {}
 
@@ -105,7 +105,7 @@ def _parse_portal_html(html: str) -> dict:
     )
     if status_match:
         raw = status_match.group(1).strip().upper()
-        result["status_prawny"] = STATUS_MAP.get(raw, "AKTYWNA")
+        result["legal_status"] = STATUS_MAP.get(raw, "AKTYWNA")
 
     # Founding date — look for "Data rozpoczęcia" or "Data wpisu"
     date_match = re.search(
@@ -113,11 +113,11 @@ def _parse_portal_html(html: str) -> dict:
         html, re.IGNORECASE
     )
     if date_match:
-        result["data_rozpoczecia"] = _parse_date(date_match.group(1))
+        result["start_date"] = _parse_date(date_match.group(1))
 
     # Fallback: if we got any results page (no "Brak wyników"), assume active
-    if "Brak wynik" not in html and not result.get("status_prawny"):
-        result["status_prawny"] = "AKTYWNA"
+    if "Brak wynik" not in html and not result.get("legal_status"):
+        result["legal_status"] = "ACTIVE"
 
     return result
 
