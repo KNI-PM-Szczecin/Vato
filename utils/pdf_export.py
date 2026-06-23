@@ -6,6 +6,19 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from urllib.parse import urlparse
 
+STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+LOGO_PATH = os.path.join(STATIC_DIR, "vato_black.png")
+
+def _draw_logo(canvas, doc):
+    if not os.path.exists(LOGO_PATH):
+        return
+    logo_w, logo_h = 70, 28
+    x = doc.pagesize[0] - doc.rightMargin - logo_w
+    y = doc.pagesize[1] - doc.topMargin - logo_h + 10
+    canvas.saveState()
+    canvas.drawImage(LOGO_PATH, x, y, width=logo_w, height=logo_h, preserveAspectRatio=True, mask="auto")
+    canvas.restoreState()
+
 def strip_polish_chars(text: str) -> str:
     """Replaces Polish characters with their ASCII equivalents to prevent rendering issues in ReportLab."""
     if not isinstance(text, str):
@@ -223,4 +236,4 @@ def export_results_pdf(results, path: str) -> None:
         ]))
         story.append(line_table)
         
-    doc.build(story)
+    doc.build(story, onFirstPage=_draw_logo, onLaterPages=_draw_logo)
