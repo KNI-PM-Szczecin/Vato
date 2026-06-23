@@ -9,7 +9,7 @@ from views.advanced_view import AdvancedView
 
 class App(ctk.CTk):
     def __init__(self):
-        super().__init__()
+        super().__init__(className="Vato")
 
         self.title("Vato - Weryfikacja Kontrahentów")
         self.geometry("900x750")
