@@ -34,8 +34,17 @@ class App(ctk.CTk):
             if sys.platform.startswith("win"):
                 self.iconbitmap(os.path.join(base_path, "static", "vato_v_white.ico"))
             else:
-                img = tk.PhotoImage(file=os.path.join(base_path, "static", "vato_v_white.png"))
-                self.iconphoto(True, img)
+                from PIL import ImageTk
+                pil_img = Image.open(os.path.join(base_path, "static", "vato_v_white.png")).convert("RGBA")
+                
+                # Zmniejszamy wizualnie ikonę dodając przezroczysty margines (padding)
+                canvas_size = int(pil_img.width * 1.35)
+                canvas = Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0))
+                offset = ((canvas_size - pil_img.width) // 2, (canvas_size - pil_img.height) // 2)
+                canvas.paste(pil_img, offset)
+                
+                self._dock_icon = ImageTk.PhotoImage(canvas)
+                self.iconphoto(True, self._dock_icon)
         except Exception as e:
             print(f"Nie udało się załadować ikony okna: {e}")
 
@@ -43,7 +52,7 @@ class App(ctk.CTk):
             self.logo_image = ctk.CTkImage(
                 light_image=Image.open(os.path.join(base_path, "static", "vato_black.png")),
                 dark_image=Image.open(os.path.join(base_path, "static", "vato_white.png")),
-                size=(120, 65)
+                size=(150, 80)
             )
             self.title_label = ctk.CTkLabel(
                 self.header_frame, 
@@ -61,15 +70,28 @@ class App(ctk.CTk):
         self.title_label.grid(row=0, column=0, sticky="w")
 
         # Theme Switch
-        self.theme_switch = ctk.CTkSwitch(
-            self.header_frame, 
-            text="Tryb Ciemny", 
-            command=self.toggle_theme,
-            font=ctk.CTkFont(size=14)
+        try:
+            self.sun_image = ctk.CTkImage(Image.open(os.path.join(base_path, "static", "sun.png")), size=(24, 24))
+            self.moon_image = ctk.CTkImage(Image.open(os.path.join(base_path, "static", "moon.png")), size=(24, 24))
+        except Exception as e:
+            print(f"Nie udało się załadować ikon: {e}")
+            self.sun_image = None
+            self.moon_image = None
+
+        self.is_dark_mode = ctk.get_appearance_mode() == "Dark"
+        
+        self.theme_btn = ctk.CTkButton(
+            self.header_frame,
+            text="",
+            image=self.sun_image if self.is_dark_mode else self.moon_image,
+            width=40,
+            height=40,
+            corner_radius=20,
+            fg_color="transparent",
+            hover_color="gray30" if self.is_dark_mode else "gray70",
+            command=self.toggle_theme
         )
-        self.theme_switch.grid(row=0, column=1, sticky="e")
-        if ctk.get_appearance_mode() == "Dark":
-            self.theme_switch.select()
+        self.theme_btn.grid(row=0, column=1, sticky="e")
 
         # Tabview
         self.main_tabs = ctk.CTkTabview(self, corner_radius=10)
@@ -85,7 +107,22 @@ class App(ctk.CTk):
         self.advanced_view.pack(fill="both", expand=True, padx=10, pady=10)
 
     def toggle_theme(self):
-        if self.theme_switch.get():
+        # Wymuszamy zakończenie bieżących zadań interfejsu (bufor)
+        self.update_idletasks()
+        
+        self.is_dark_mode = not self.is_dark_mode
+        if self.is_dark_mode:
             ctk.set_appearance_mode("Dark")
+            self.theme_btn.configure(
+                image=self.sun_image,
+                hover_color="gray30"
+            )
         else:
             ctk.set_appearance_mode("Light")
+            self.theme_btn.configure(
+                image=self.moon_image,
+                hover_color="gray70"
+            )
+            
+        # Synchroniczne, jednoczesne odrysowanie całości, by ukryć ewentualne "klatkowanie" elementów
+        self.update()
