@@ -3,7 +3,7 @@ name: architecture
 description: Generate MVC/MVVM project structure, directory layout, and requirements.txt for this Python desktop app. Use before writing any application code.
 ---
 
-Read Zalozenia/instruction.txt, then:
+Read Requirements/instruction.txt, then:
 
 1. Propose a clean MVC/MVVM directory structure for this CustomTkinter + Python project (views, controllers/viewmodels, services, models, ai, utils)
 2. Show which file goes in which directory with a one-line purpose for each
