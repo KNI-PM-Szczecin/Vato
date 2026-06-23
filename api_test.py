@@ -124,7 +124,7 @@ def evaluate_contractor(data: dict) -> dict:
 
 
 if __name__ == "__main__":
-    TEST_NIP = "8512897664"
+    TEST_NIP = "5252674798"
     TEST_ACCOUNT = "12 1234 5678 0000 0000 0000 0000"
     
     company_data = fetch_company_data(TEST_NIP, TEST_ACCOUNT)
