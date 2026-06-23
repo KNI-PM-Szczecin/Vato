@@ -114,11 +114,19 @@ class BasicView(ctk.CTkFrame):
             details = "\n".join([f"- {d}" for d in result["details"]])
             full_report = f"--- WYNIK DLA {method}: {nip} ---\n{quick_report}\n\nSzczegóły:\n{details}"
             
-            self.after(0, lambda: self.append_result(full_report))
-            self.after(0, lambda: PopupMessage(f"Walidacja zakończona", quick_report, status=status_color))
+            def _show_validate_result():
+                self.append_result(full_report)
+                self.update_idletasks()
+                PopupMessage("Walidacja zakończona", quick_report, status=status_color)
+
+            self.after(0, _show_validate_result)
         except Exception as e:
-            self.after(0, lambda: PopupMessage("Błąd API", f"Wystąpił błąd podczas walidacji: {str(e)}", status="error"))
-            self.after(0, lambda: self.append_result(f"Błąd krytyczny: {str(e)}"))
+            captured = str(e)
+            def _show_error():
+                self.append_result(f"Błąd krytyczny: {captured}")
+                self.update_idletasks()
+                PopupMessage("Błąd API", f"Wystąpił błąd podczas walidacji: {captured}", status="error")
+            self.after(0, _show_error)
         finally:
             self.after(0, lambda: self.quick_validate_btn.configure(state="normal", text="Szybka walidacja"))
 
@@ -184,61 +192,76 @@ class BasicView(ctk.CTkFrame):
 
             current_year = datetime.date.today().year
 
-            # Sekcja szczegółów jako elementy listy HTML
-            details_items = "".join(
-                f'<li style="padding:9px 0;border-bottom:1px solid #f0f2f5;font-size:14px;line-height:1.5;">{d}</li>'
-                for d in result["details"]
-            )
+            # Tytuł firmy — title case dla czytelności (API zwraca CAPS)
+            company_display = company_name.title() if company_name != "---" else "—"
 
-            # Dynamiczne zaznaczenie kryterium "5 lat działalności" (jedyne dostępne z danych API)
+            # Tabela kryteriów z image.png — dynamiczne zaznaczenie "5 lat działalności"
             years_in_biz = result.get("2_experience", 0)
+
             def criterion_badge(met: bool | None) -> str:
                 if met is None:
-                    return '<span style="background:#eeeeee;color:#888;padding:2px 8px;border-radius:10px;font-size:12px;">brak danych</span>'
-                color, label = ("#e8f5e9", "✓ spełnione") if met else ("#ffebee", "✗ niespełnione")
-                txt_color = "#2e7d32" if met else "#c62828"
-                return f'<span style="background:{color};color:{txt_color};padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;">{label}</span>'
+                    return '<span style="background:#f0f0f0;color:#aaa;padding:3px 10px;border-radius:20px;font-size:11px;">brak danych</span>'
+                if met:
+                    return '<span style="background:#e6f4ea;color:#1e7e34;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">&#10003; Spełnione</span>'
+                return '<span style="background:#fdecea;color:#c0392b;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">&#10007; Niespełnione</span>'
 
             criteria_rows = [
-                ("Ma więcej niż 100 sprawnych pojazdów", "+10", None),
-                ("Mniej niż 15% floty jest w serwisie", "−5", None),
-                ("Kapitał zakładowy przynajmniej 20% obrotów", "+5", None),
-                ("Brak komornika na głowie", "+5", None),
-                ("5 lat działalności", "+10", years_in_biz == 10),
-                ("10 lat działalności", "0", None),
+                ("Ma więcej niż 100 sprawnych pojazdów", "+10 pkt", None),
+                ("Mniej niż 15% floty jest w serwisie", "−5 pkt", None),
+                ("Kapitał zakładowy przynajmniej 20% obrotów", "+5 pkt", None),
+                ("Brak komornika na głowie", "+5 pkt", None),
+                ("5 lat działalności", "+10 pkt", years_in_biz == 10),
+                ("10 lat działalności", "0 pkt", None),
             ]
             criteria_html = ""
-            for i, (label, pts, met) in enumerate(criteria_rows):
-                row_bg = "#f8fafc" if i % 2 == 0 else "#ffffff"
+            for i, (lbl, pts, met) in enumerate(criteria_rows):
+                row_bg = "#f9fafc" if i % 2 == 0 else "#ffffff"
                 criteria_html += (
                     f'<tr style="background:{row_bg};">'
-                    f'<td style="padding:10px 14px;font-size:13px;border-bottom:1px solid #eee;">{label}</td>'
-                    f'<td style="padding:10px 14px;font-size:13px;font-weight:700;text-align:center;border-bottom:1px solid #eee;">{pts}</td>'
-                    f'<td style="padding:10px 14px;text-align:center;border-bottom:1px solid #eee;">{criterion_badge(met)}</td>'
+                    f'<td style="padding:10px 14px;font-size:13px;color:#333;border-bottom:1px solid #eef0f4;">{lbl}</td>'
+                    f'<td style="padding:10px 14px;font-size:12px;font-weight:700;color:#555;text-align:center;border-bottom:1px solid #eef0f4;white-space:nowrap;">{pts}</td>'
+                    f'<td style="padding:10px 14px;text-align:center;border-bottom:1px solid #eef0f4;">{criterion_badge(met)}</td>'
                     f'</tr>'
                 )
 
-            # Sekcja "wynik testu" wzorowana na output run_test.py
-            risk_label = "SREDNIE (Zalecana ostroznosc)"
-            if total_score >= 20:
-                risk_label = "NISKIE (Zaufany kontrahent)"
-            elif total_score < 0:
-                risk_label = "WYSOKIE (Zagrozenie)"
-
-            terminal_lines = [
-                f"Rozpoczyna weryfikację: NIP={nip}",
-                "Identyfikacja i ocena kontrahenta ...",
-                "Uruchamianie algorytmu scoringowego ...",
-                "",
-                "=" * 42,
-                f"Wynik: {company_name} -&gt; {risk_label} ({total_score} pkt)",
-                "=" * 42,
+            # Tabela wyników weryfikacji — zastępuje terminal, czytelna dla nietech. użytkowników
+            category_map = [
+                ("1_legal_status", "Status prawny",   "Rejestracja i aktywność gospodarcza"),
+                ("2_experience",   "Doświadczenie",   "Staż firmy na rynku"),
+                ("3_vat_taxes",    "Podatki / VAT",   "Status VAT i Biała Lista MF"),
+                ("4_stability",    "Stabilność",      "Zmiany zarządu i adresu siedziby"),
             ]
-            terminal_html = "<br>".join(terminal_lines)
+            import re as _re
+            results_rows_html = ""
+            for i, (key, cat_name, cat_desc) in enumerate(category_map):
+                score_val = result.get(key, 0)
+                detail_str = result["details"][i] if i < len(result["details"]) else ""
+                desc = _re.sub(r'^[^:]+:\s*', '', detail_str).rstrip(".")
+
+                if score_val > 0:
+                    s_color, s_bg, s_str = "#1e7e34", "#e6f4ea", f"+{score_val}"
+                elif score_val < 0:
+                    s_color, s_bg, s_str = "#c0392b", "#fdecea", str(score_val)
+                else:
+                    s_color, s_bg, s_str = "#666", "#f5f5f5", "0"
+
+                row_bg = "#f9fafc" if i % 2 == 0 else "#ffffff"
+                results_rows_html += (
+                    f'<tr style="background:{row_bg};">'
+                    f'<td style="padding:12px 14px;border-bottom:1px solid #eef0f4;width:130px;">'
+                    f'  <p style="margin:0;font-size:13px;font-weight:700;color:#1e3c72;">{cat_name}</p>'
+                    f'  <p style="margin:2px 0 0;font-size:11px;color:#aaa;">{cat_desc}</p>'
+                    f'</td>'
+                    f'<td style="padding:12px 14px;font-size:13px;color:#444;border-bottom:1px solid #eef0f4;line-height:1.45;">{desc}</td>'
+                    f'<td style="padding:12px 14px;text-align:center;border-bottom:1px solid #eef0f4;white-space:nowrap;">'
+                    f'  <span style="background:{s_bg};color:{s_color};padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;">{s_str} pkt</span>'
+                    f'</td>'
+                    f'</tr>'
+                )
 
             logo_img = (
                 f'<img src="data:image/png;base64,{_LOGO_B64}" alt="Vato" '
-                f'style="max-width:200px;height:auto;display:block;margin:0 auto;">'
+                f'style="max-width:160px;height:auto;display:block;margin:0 auto;">'
                 if _LOGO_B64 else
                 '<p style="font-size:22px;font-weight:700;text-align:center;color:#111;">VATO</p>'
             )
@@ -254,53 +277,53 @@ class BasicView(ctk.CTkFrame):
   <div style="max-width:600px;margin:28px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,0.09);border:1px solid #dde1ea;">
 
     <!-- LOGO -->
-    <div style="padding:26px 24px 18px;text-align:center;background:#fff;border-bottom:1px solid #eaecf0;">
+    <div style="padding:24px 24px 16px;text-align:center;background:#fff;border-bottom:1px solid #eaecf0;">
       {logo_img}
-      <p style="margin:10px 0 0;font-size:10px;color:#bbb;letter-spacing:2px;text-transform:uppercase;font-weight:600;">Raport Weryfikacji Kontrahenta</p>
+      <p style="margin:10px 0 4px;font-size:10px;color:#bbb;letter-spacing:2px;text-transform:uppercase;font-weight:600;">Raport Weryfikacji Kontrahenta</p>
+      <p style="margin:0;font-size:11px;color:#ccc;">Wygenerowany {datetime.datetime.now().strftime('%d.%m.%Y')} o {datetime.datetime.now().strftime('%H:%M')} przez Vato KYC Tool</p>
     </div>
 
-    <div style="padding:24px 28px 20px;">
+    <div style="padding:22px 26px 20px;">
 
       <!-- WYNIK SCORINGOWY -->
-      <div style="display:flex;align-items:center;padding:18px 22px;background:{bg_color};border-radius:8px;border:1px solid {border_color};margin-bottom:24px;">
-        <div style="flex:0 0 auto;text-align:center;padding-right:20px;border-right:1px solid {border_color};min-width:72px;">
-          <p style="margin:0;font-size:38px;font-weight:800;color:{text_color};line-height:1;">{total_score}</p>
-          <p style="margin:2px 0 0;font-size:11px;color:#999;letter-spacing:1px;text-transform:uppercase;">/ 40 pkt</p>
+      <div style="display:table;width:100%;padding:16px 20px;background:{bg_color};border-radius:10px;border:1px solid {border_color};margin-bottom:22px;box-sizing:border-box;">
+        <div style="display:table-cell;text-align:center;padding-right:18px;border-right:1px solid {border_color};width:90px;vertical-align:middle;">
+          <p style="margin:0;font-size:36px;font-weight:800;color:{text_color};line-height:1;">{total_score}</p>
+          <p style="margin:3px 0 0;font-size:10px;color:#aaa;letter-spacing:1px;text-transform:uppercase;">/ 40 pkt</p>
         </div>
-        <div style="padding-left:20px;">
+        <div style="display:table-cell;padding-left:18px;vertical-align:middle;">
           <p style="margin:0;font-size:15px;font-weight:700;color:{text_color};">{recommendation}</p>
-          <p style="margin:5px 0 1px;font-size:13px;font-weight:600;color:#444;">{company_name}</p>
-          <p style="margin:0;font-size:11px;color:#999;">NIP: {nip} &nbsp;·&nbsp; {datetime.date.today().strftime('%d.%m.%Y')}</p>
+          <p style="margin:5px 0 2px;font-size:14px;font-weight:600;color:#333;">{company_display}</p>
+          <p style="margin:0;font-size:11px;color:#aaa;">NIP:&nbsp;{nip}&nbsp;&nbsp;·&nbsp;&nbsp;{datetime.date.today().strftime('%d.%m.%Y')}</p>
         </div>
       </div>
 
-      <!-- TABELA KRYTERIÓW -->
-      <p style="font-size:13px;font-weight:700;color:#1e3c72;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #e8eaf0;padding-bottom:7px;margin:0 0 12px;">Kryteria oceny</p>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
+      <!-- TABELA KRYTERIÓW OCENY -->
+      <p style="font-size:11px;font-weight:700;color:#1e3c72;text-transform:uppercase;letter-spacing:1.2px;border-bottom:2px solid #e8eaf0;padding-bottom:7px;margin:0 0 10px;">Kryteria oceny</p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:4px;border-radius:8px;overflow:hidden;border:1px solid #e8eaf0;">
         <thead>
           <tr style="background:#1e3c72;color:#fff;">
-            <th style="padding:9px 13px;text-align:left;font-size:12px;font-weight:600;border-radius:0;">Kryterium</th>
-            <th style="padding:9px 13px;text-align:center;font-size:12px;font-weight:600;width:50px;">Pkt</th>
-            <th style="padding:9px 13px;text-align:center;font-size:12px;font-weight:600;width:120px;">Status</th>
+            <th style="padding:9px 13px;text-align:left;font-size:12px;font-weight:600;">Kryterium</th>
+            <th style="padding:9px 13px;text-align:center;font-size:12px;font-weight:600;width:60px;">Pkt</th>
+            <th style="padding:9px 13px;text-align:center;font-size:12px;font-weight:600;width:130px;">Status</th>
           </tr>
         </thead>
-        <tbody>
-          {criteria_html}
-        </tbody>
+        <tbody>{criteria_html}</tbody>
       </table>
-      <p style="font-size:10px;color:#bbb;margin:4px 0 22px;">&#42; Kryteria "brak danych" wymagają weryfikacji z zewnętrznych źródeł (dane flotowe, kapitałowe).</p>
+      <p style="font-size:10px;color:#ccc;margin:4px 0 22px;">* Kryteria "brak danych" wymagają weryfikacji z zewnętrznych źródeł (dane flotowe, kapitałowe).</p>
 
-      <!-- WYNIK WERYFIKACJI (terminal) -->
-      <p style="font-size:13px;font-weight:700;color:#1e3c72;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #e8eaf0;padding-bottom:7px;margin:0 0 12px;">Wynik weryfikacji</p>
-      <div style="background:#12121f;color:#c8d0e0;border-radius:7px;padding:13px 16px;font-family:'Courier New',Courier,monospace;font-size:11.5px;line-height:1.65;margin-bottom:22px;">
-        {terminal_html}
-      </div>
-
-      <!-- SZCZEGÓŁY -->
-      <p style="font-size:13px;font-weight:700;color:#1e3c72;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #e8eaf0;padding-bottom:7px;margin:0 0 4px;">Szczegóły oceny</p>
-      <ul style="list-style:none;padding:0;margin:0 0 8px 0;">
-        {details_items}
-      </ul>
+      <!-- WYNIKI WERYFIKACJI — czytelna tabelka dla nietech. użytkowników -->
+      <p style="font-size:11px;font-weight:700;color:#1e3c72;text-transform:uppercase;letter-spacing:1.2px;border-bottom:2px solid #e8eaf0;padding-bottom:7px;margin:0 0 10px;">Wyniki weryfikacji</p>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e8eaf0;border-radius:8px;overflow:hidden;">
+        <thead>
+          <tr style="background:#1e3c72;color:#fff;">
+            <th style="padding:9px 13px;text-align:left;font-size:12px;font-weight:600;width:130px;">Obszar</th>
+            <th style="padding:9px 13px;text-align:left;font-size:12px;font-weight:600;">Opis</th>
+            <th style="padding:9px 13px;text-align:center;font-size:12px;font-weight:600;width:80px;">Wynik</th>
+          </tr>
+        </thead>
+        <tbody>{results_rows_html}</tbody>
+      </table>
 
     </div>
 
@@ -325,10 +348,21 @@ class BasicView(ctk.CTkFrame):
             gui_text = f"--- WYNIK DLA NIP: {nip} ---\nFirma uzyskała {total_score}/40 pkt.\nRekomendacja: {recommendation}\n\nSzczegóły:\n"
             gui_text += "\n".join([f"- {d}" for d in result["details"]])
 
-            self.after(0, lambda: PopupMessage("Sukces", f"Raport wygenerowany i wysłany na {user_email}.", status=status_color))
-            self.after(0, lambda: self.append_result(f"Raport pomyślnie wysłany na {user_email}.\n\n{gui_text}"))
+            success_msg = f"Raport pomyślnie wysłany na {user_email}.\n\n{gui_text}"
+            popup_msg = f"Raport wygenerowany i wysłany na {user_email}."
+
+            def _show_report_result():
+                self.append_result(success_msg)
+                self.update_idletasks()
+                PopupMessage("Sukces", popup_msg, status=status_color)
+
+            self.after(0, _show_report_result)
         except Exception as e:
-            self.after(0, lambda: PopupMessage("Błąd wysyłki", f"Nie udało się wysłać raportu: {str(e)}", status="error"))
-            self.after(0, lambda: self.append_result(f"Błąd wysyłki raportu: {str(e)}"))
+            captured = str(e)
+            def _show_report_error():
+                self.append_result(f"Błąd wysyłki raportu: {captured}")
+                self.update_idletasks()
+                PopupMessage("Błąd wysyłki", f"Nie udało się wysłać raportu: {captured}", status="error")
+            self.after(0, _show_report_error)
         finally:
             self.after(0, lambda: self.generate_report_btn.configure(state="normal", text="Generuj Raport i Wyślij"))
