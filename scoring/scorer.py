@@ -49,7 +49,8 @@ async def enrich(data: ContractorData) -> ContractorData:
             age_score = 5
             justifications.append(t("scorer.age_eu", country=country_code))
         else:
-            age_score = 0 
+            # Brak danych o dacie rejestracji (np. brak dostepu do KRS) = wynik neutralny
+            age_score = 5
             justifications.append(t("scorer.age_unknown"))
             
     categories_results.append(CategoryScore(
@@ -74,10 +75,14 @@ async def enrich(data: ContractorData) -> ContractorData:
     on_whitelist = getattr(data, 'rachunek_na_bialej_liscie', False)
     
     if country_code == "PL":
-        if legal_status == "AKTYWNA": reg_score += 5
+        if legal_status == "AKTYWNA":
+            reg_score += 5
+        elif legal_status in ("NIEZNANY", "", None):
+            # Brak danych z KRS/CEIDG = neutralnie, nie karamy za niedostepnosc danych
+            reg_score += 2
         if "CZYNNY" in status_vat: reg_score += 5
         if on_whitelist: reg_score += 5
-        
+
         if reg_score < 15:
             justifications.append(t("scorer.reg_pl_bad", legal=legal_status, vat=status_vat, whitelist=on_whitelist))
         else:
@@ -109,8 +114,12 @@ async def enrich(data: ContractorData) -> ContractorData:
         justifications.append(t("scorer.cap_eu", country=country_code))
     else:
         share_capital = getattr(data, 'share_capital', None)
-        cap_score = 10 if (share_capital and share_capital >= 50000) else 5
-        
+        if share_capital is None:
+            # Brak danych o kapitale (np. brak KRS) = wynik neutralny
+            cap_score = 7
+        else:
+            cap_score = 10 if share_capital >= 50000 else 5
+
         has_bailiff = getattr(data, 'has_bailiff_proceedings', None)
         if has_bailiff is True:
             bailiff_score = 0
@@ -120,6 +129,11 @@ async def enrich(data: ContractorData) -> ContractorData:
             bailiff_score = 25
             bailiff_status = t("scorer.status_pos")
             justifications.append(t("scorer.bailiff_no"))
+        else:
+            # Brak danych z KRS = neutralna ocena, nie karamy za niedostepnosc rejestru
+            bailiff_score = 15
+            bailiff_status = t("scorer.status_unk")
+            justifications.append("Brak danych o postępowaniach komorniczych (dane niedostępne z KRS) — przyjęto ocenę neutralną.")
     
     categories_results.append(CategoryScore(
         category_name=t("scorer.cat_cap"), score=cap_score, max_score=10,

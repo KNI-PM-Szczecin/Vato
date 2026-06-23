@@ -49,21 +49,19 @@ async def fetch_krs_data(nip: str, krs_numer: str | None = None) -> dict:
                 return {}
             body = resp.json()
 
-        dzial1 = (
-            body.get("odpis", {})
-                .get("dane", {})
-                .get("dzial1", {})
-        )
+        odpis_dane = body.get("odpis", {}).get("dane", {})
+        dzial1 = odpis_dane.get("dzial1", {})
         info = dzial1.get("danePodmiotu", {})
-        
+
         kapital_info = dzial1.get("kapital", {}).get("wysokoscKapitaluZakladowego", {})
         share_capital = kapital_info.get("wartosc")
         if share_capital is not None:
-            share_capital = float(share_capital)
-            
-        dzial4 = body.get("dzial4", {})
+            # KRS zwraca liczby z przecinkiem jako separatorem dziesiętnym (np. "125000,00")
+            share_capital = float(str(share_capital).replace(",", "."))
+
+        dzial4 = odpis_dane.get("dzial4", {})
         has_bailiff = False
-        
+
         if dzial4:
             klucze_egzekucji = ["wpisyOPostepowaniuEgzekucyjnym", "ogloszeniaOPostepowaniuEgzekucyjnym"]
             if any(klucz in dzial4 for klucz in klucze_egzekucji) or any("egzekuc" in str(k).lower() for k in dzial4.keys()):
