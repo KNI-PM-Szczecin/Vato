@@ -10,7 +10,6 @@ class RegonClient:
         self.api_key = os.getenv("REGON_API_KEY", "")
         self._session_key: str | None = None
 
-
     async def _login(self, client: httpx.AsyncClient) -> str:
         """Obtain a session key from BIR1."""
 

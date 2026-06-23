@@ -33,7 +33,7 @@ class AdvancedView(ctk.CTkFrame):
         self.save_label = ctk.CTkLabel(self.files_card, text="Plik docelowy:")
         self.save_label.grid(row=2, column=0, sticky="w", padx=(20, 10), pady=(0, 20))
 
-        self.save_input = ctk.CTkEntry(self.files_card, placeholder_text="Miejsce zapisu raportu...", height=32)
+        self.save_input = ctk.CTkEntry(self.files_card, placeholder_text="Miejsce zapisu (opcjonalnie)...", height=32)
         self.save_input.grid(row=2, column=1, sticky="ew", padx=(0, 10), pady=(0, 20))
 
         self.save_btn = ctk.CTkButton(self.files_card, text="Wybierz...", width=100, height=32, command=self.handle_file_save)
@@ -47,24 +47,34 @@ class AdvancedView(ctk.CTkFrame):
         self.actions_title = ctk.CTkLabel(self.actions_card, text="Eksport i Akcje", font=ctk.CTkFont(size=16, weight="bold"))
         self.actions_title.grid(row=0, column=0, sticky="w", padx=20, pady=(15, 10))
 
-        self.email_input = ctk.CTkEntry(self.actions_card, placeholder_text="Adres e-mail do wysyłki podsumowania", height=32)
-        self.email_input.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 15))
+        self.email_input = ctk.CTkEntry(self.actions_card, placeholder_text="Adres(y) e-mail do wysyłki (można wkleić listę)", height=32)
+        self.email_input.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 2))
+
+        self.email_hint = ctk.CTkLabel(self.actions_card, text="Wiele adresów oddziel spacją, przecinkiem (,) lub średnikiem (;)", font=ctk.CTkFont(size=11), text_color="gray")
+        self.email_hint.grid(row=2, column=0, sticky="w", padx=20, pady=(0, 15))
+
+        self.checkbox_frame = ctk.CTkFrame(self.actions_card, fg_color="transparent")
+        self.checkbox_frame.grid(row=3, column=0, sticky="ew", padx=20, pady=(0, 15))
 
         self.open_file_var = ctk.StringVar(value="off")
-        self.open_file_checkbox = ctk.CTkCheckBox(self.actions_card, text="Otwórz plik po zakończeniu", variable=self.open_file_var, onvalue="on", offvalue="off")
-        self.open_file_checkbox.grid(row=2, column=0, sticky="w", padx=20, pady=(0, 15))
+        self.open_file_checkbox = ctk.CTkCheckBox(self.checkbox_frame, text="Otwórz plik po zakończeniu", variable=self.open_file_var, onvalue="on", offvalue="off")
+        self.open_file_checkbox.grid(row=0, column=0, sticky="w", padx=(0, 20))
+
+        self.attach_orig_var = ctk.StringVar(value="off")
+        self.attach_orig_checkbox = ctk.CTkCheckBox(self.checkbox_frame, text="Załącz oryginał do e-maila", variable=self.attach_orig_var, onvalue="on", offvalue="off")
+        self.attach_orig_checkbox.grid(row=0, column=1, sticky="w")
 
         self.quick_validate_btn = ctk.CTkButton(
             self.actions_card, text="Waliduj i zapisz wyniki", height=35,
             command=self.execute_quick_validation
         )
-        self.quick_validate_btn.grid(row=3, column=0, sticky="ew", padx=20, pady=(0, 10))
+        self.quick_validate_btn.grid(row=4, column=0, sticky="ew", padx=20, pady=(0, 10))
 
         self.generate_report_btn = ctk.CTkButton(
             self.actions_card, text="Waliduj, zapisz i wyślij E-mail", height=35, fg_color="#2E7D32", hover_color="#1B5E20",
             command=self.execute_report_generation
         )
-        self.generate_report_btn.grid(row=4, column=0, sticky="ew", padx=20, pady=(0, 20))
+        self.generate_report_btn.grid(row=5, column=0, sticky="ew", padx=20, pady=(0, 20))
 
         # --- Card 3: Status ---
         self.status_card = ctk.CTkFrame(self, corner_radius=10)
@@ -115,12 +125,21 @@ class AdvancedView(ctk.CTkFrame):
 
     def execute_quick_validation(self):
         src = self.load_input.get().strip()
-        dest = self.save_input.get().strip()
-        if not src or not dest:
-            PopupMessage("Brak plików", "Wybierz plik źródłowy i docelowy.", status="warning")
+        if not src:
+            PopupMessage("Brak pliku", "Wybierz plik źródłowy.", status="warning")
             return
             
-        self.append_log("Rozpoczynanie walidacji wsadowej (symulacja w tle)...")
+        dest = self.save_input.get().strip()
+        import os
+        import datetime
+        if not dest or os.path.abspath(dest) == os.path.abspath(src):
+            base, ext = os.path.splitext(src)
+            timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+            dest = f"{base}_vato-{timestamp}{ext}"
+            self.save_input.delete(0, 'end')
+            self.save_input.insert(0, dest)
+            
+        self.append_log("Rozpoczynanie walidacji wsadowej (działanie w tle)...")
         # Placeholder on thread
         threading.Thread(target=self._simulate_processing, args=(dest,), daemon=True).start()
 
@@ -149,18 +168,30 @@ class AdvancedView(ctk.CTkFrame):
         results_dict = {}
         for nip in nips:
             try:
-                company_data = api_test.fetch_company_data(nip)
-                result = api_test.evaluate_contractor(company_data)
+                import asyncio
+                from models.contractor import ContractorData
+                from scoring.scorer import enrich
+                import datetime
                 
-                score = result['total']
-                if score >= 20:
-                    rec = "Akceptacja"
-                elif score >= 0:
-                    rec = "Weryfikacja"
-                else:
-                    rec = "Odrzucenie"
+                company_dict = api_test.fetch_company_data(nip)
+                
+                cdata = ContractorData(
+                    nip=company_dict["nip"],
+                    status_prawny=company_dict.get("legal_status", "NIEZNANY"),
+                    data_rozpoczecia=datetime.date.fromisoformat(company_dict["start_date"]) if company_dict.get("start_date") else None,
+                    status_vat=company_dict.get("vat_status", "NIEZNANY"),
+                    rachunek_na_bialej_liscie=company_dict.get("account_on_whitelist", False),
+                    share_capital=100000,
+                    has_bailiff_proceedings=False
+                )
+                
+                cdata = asyncio.run(enrich(cdata))
+                score_data = cdata.scoring
+                
+                score = score_data['total_score']
+                rec = score_data['risk_level']
                     
-                score_text = f"{score}/40 - {rec}"
+                score_text = f"{score}/60 - {rec}"
                 results_dict[nip] = score_text
                 self.after(0, lambda n=nip, s=score_text: self.append_log(f"Zbadano NIP {n}: {s}"))
             except Exception as e:
@@ -225,21 +256,45 @@ class AdvancedView(ctk.CTkFrame):
             self.after(0, lambda err=str(e): PopupMessage("Błąd", f"Błąd zapisu do pliku: {err}", status="error"))
             self.after(0, lambda err=str(e): self.append_log(f"Błąd zapisu: {err}"))
 
+    def get_parsed_emails(self, text):
+        import re
+        # Zamień nowe linie, średniki, dwukropki, przecinki na spacje
+        text = re.sub(r'[\n\r;,:]', ' ', text)
+        return [e.strip() for e in text.split() if e.strip()]
+
     def is_email_valid(self, email):
         regex_pattern = r"^[\w\.-]+@[\w\.-]+\.\w+$"
         return re.match(regex_pattern, email) is not None
 
     def execute_report_generation(self):
-        user_email = self.email_input.get().strip()
-        if not self.is_email_valid(user_email):
-            PopupMessage("Błąd", "Podano niepoprawny adres email.", status="error")
+        user_email_raw = self.email_input.get().strip()
+        emails = self.get_parsed_emails(user_email_raw)
+        
+        if not emails:
+            PopupMessage("Błąd", "Nie podano żadnego adresu email.", status="error")
             return
+            
+        for email in emails:
+            if not self.is_email_valid(email):
+                PopupMessage("Błąd", f"Niepoprawny format adresu: {email}", status="error")
+                return
+                
+        user_email = ", ".join(emails)
 
         src = self.load_input.get().strip()
-        dest = self.save_input.get().strip()
-        if not src or not dest:
-            PopupMessage("Brak plików", "Wybierz plik źródłowy i docelowy.", status="warning")
+        if not src:
+            PopupMessage("Brak pliku", "Wybierz plik źródłowy.", status="warning")
             return
+
+        dest = self.save_input.get().strip()
+        import os
+        import datetime
+        if not dest or os.path.abspath(dest) == os.path.abspath(src):
+            base, ext = os.path.splitext(src)
+            timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+            dest = f"{base}_vato-{timestamp}{ext}"
+            self.save_input.delete(0, 'end')
+            self.save_input.insert(0, dest)
 
         self.append_log(f"Walidacja wsadowa z raportem na adres: {user_email}...")
         threading.Thread(target=self._simulate_processing, args=(dest,), daemon=True).start()

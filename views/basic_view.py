@@ -51,14 +51,17 @@ class BasicView(ctk.CTkFrame):
         self.report_title = ctk.CTkLabel(self.report_card, text="Eksport i Powiadomienia", font=ctk.CTkFont(size=16, weight="bold"))
         self.report_title.grid(row=0, column=0, sticky="w", padx=20, pady=(15, 10))
 
-        self.email_input = ctk.CTkEntry(self.report_card, placeholder_text="Adres e-mail odbiorcy (opcjonalnie)", height=32)
-        self.email_input.grid(row=1, column=0, padx=20, pady=(0, 15), sticky="ew")
+        self.email_input = ctk.CTkEntry(self.report_card, placeholder_text="Adres(y) e-mail (można wkleić całą listę)", height=32)
+        self.email_input.grid(row=1, column=0, padx=20, pady=(0, 2), sticky="ew")
+
+        self.email_hint = ctk.CTkLabel(self.report_card, text="Wiele adresów oddziel spacją, przecinkiem (,) lub średnikiem (;)", font=ctk.CTkFont(size=11), text_color="gray")
+        self.email_hint.grid(row=2, column=0, sticky="w", padx=20, pady=(0, 15))
 
         self.generate_report_btn = ctk.CTkButton(
             self.report_card, text="Generuj Raport i Wyślij", height=35, fg_color="#2E7D32", hover_color="#1B5E20",
             command=self.execute_report_generation
         )
-        self.generate_report_btn.grid(row=2, column=0, padx=20, pady=(0, 20), sticky="ew")
+        self.generate_report_btn.grid(row=3, column=0, padx=20, pady=(0, 20), sticky="ew")
 
         # --- Card 3: Results ---
         self.result_card = ctk.CTkFrame(self, corner_radius=10)
@@ -96,22 +99,39 @@ class BasicView(ctk.CTkFrame):
 
     def _async_validate(self, nip, method):
         try:
-            company_data = api_test.fetch_company_data(nip)
-            result = api_test.evaluate_contractor(company_data)
+            import asyncio
+            from models.contractor import ContractorData
+            from scoring.scorer import enrich
+            import datetime
+            
+            company_dict = api_test.fetch_company_data(nip)
+            cdata = ContractorData(
+                nip=company_dict["nip"],
+                status_prawny=company_dict.get("legal_status", "NIEZNANY"),
+                data_rozpoczecia=datetime.date.fromisoformat(company_dict["start_date"]) if company_dict.get("start_date") else None,
+                status_vat=company_dict.get("vat_status", "NIEZNANY"),
+                rachunek_na_bialej_liscie=company_dict.get("account_on_whitelist", False),
+                share_capital=100000,
+                has_bailiff_proceedings=False
+            )
+            
+            cdata = asyncio.run(enrich(cdata))
+            score_data = cdata.scoring
+            
+            total = score_data['total_score']
+            recommendation = score_data['risk_level']
+            color = score_data['color_code']
 
-            if result["total"] >= 20:
-                recommendation = "Akceptacja (niskie ryzyko)."
+            if color == "green":
                 status_color = "success"
-            elif result["total"] >= 0:
-                recommendation = "Wymagana weryfikacja."
+            elif color == "yellow":
                 status_color = "warning"
             else:
-                recommendation = "Odrzucenie (wysokie ryzyko!)."
                 status_color = "error"
                 
-            quick_report = f"Firma uzyskała {result['total']}/40 pkt.\nRekomendacja: {recommendation}"
+            quick_report = f"Firma uzyskała {total}/60 pkt.\nRekomendacja: {recommendation}"
             
-            details = "\n".join([f"- {d}" for d in result["details"]])
+            details = "\n".join([f"- {d}" for d in score_data["justifications"]])
             full_report = f"--- WYNIK DLA {method}: {nip} ---\n{quick_report}\n\nSzczegóły:\n{details}"
             
             def _show_validate_result():
@@ -130,22 +150,39 @@ class BasicView(ctk.CTkFrame):
         finally:
             self.after(0, lambda: self.quick_validate_btn.configure(state="normal", text="Szybka walidacja"))
 
+    def get_parsed_emails(self, text):
+        import re
+        text = re.sub(r'[\n\r;,:]', ' ', text)
+        return [e.strip() for e in text.split() if e.strip()]
+
     def is_email_valid(self, email):
         regex_pattern = r"^[\w\.-]+@[\w\.-]+\.\w+$"
         return re.match(regex_pattern, email) is not None
 
     def execute_report_generation(self):
-        user_email = self.email_input.get().strip()
-        if not user_email:
+        user_email_raw = self.email_input.get().strip()
+        emails = self.get_parsed_emails(user_email_raw)
+        
+        # Fallback to default
+        if not emails:
             try:
                 email_service = EmailService()
-                user_email = email_service.recipient_email
+                default = email_service.recipient_email
+                if default:
+                    emails = self.get_parsed_emails(default)
             except Exception:
-                user_email = None
+                pass
 
-        if not user_email or not self.is_email_valid(user_email):
+        if not emails:
             PopupMessage("Błąd walidacji", "Podano niepoprawny adres email lub brak domyślnego odbiorcy.", status="error")
             return
+            
+        for email in emails:
+            if not self.is_email_valid(email):
+                PopupMessage("Błąd walidacji", f"Niepoprawny adres email: {email}", status="error")
+                return
+                
+        user_email = ", ".join(emails)
 
         nip = self.nip_input.get().strip()
         if not nip:
@@ -164,27 +201,29 @@ class BasicView(ctk.CTkFrame):
         Wszystkie operacje są wykonywane asynchronicznie w tle.
         """
         try:
+            import asyncio
+            from models.contractor import ContractorData
+            from scoring.scorer import enrich
             import datetime
             company_name = api_test.fetch_company_name(nip)
             company_data = api_test.fetch_company_data(nip)
             result = api_test.evaluate_contractor(company_data)
 
-            # Określenie rekomendacji i kolorów raportu na podstawie punktacji
-            total_score = result["total"]
-            if total_score >= 20:
-                recommendation = "Akceptacja (niskie ryzyko)"
+            total_score = score_data['total_score']
+            recommendation = score_data['risk_level']
+            color = score_data['color_code']
+            
+            if color == "green":
                 bg_color = "#e8f5e9"
                 border_color = "#c8e6c9"
                 text_color = "#2e7d32"
                 status_color = "success"
-            elif total_score >= 0:
-                recommendation = "Wymagana dodatkowa weryfikacja"
+            elif color == "yellow":
                 bg_color = "#fff3e0"
                 border_color = "#ffe0b2"
                 text_color = "#e65100"
                 status_color = "warning"
             else:
-                recommendation = "Odrzucenie (wysokie ryzyko!)"
                 bg_color = "#ffebee"
                 border_color = "#ffcdd2"
                 text_color = "#c62828"
@@ -272,24 +311,23 @@ class BasicView(ctk.CTkFrame):
   <meta charset="utf-8">
   <title>Raport weryfikacji KYC — {nip}</title>
 </head>
-<body style="margin:0;padding:0;background:#eef1f6;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#2c2c3a;">
-
-  <div style="max-width:600px;margin:28px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,0.09);border:1px solid #dde1ea;">
-
-    <!-- LOGO -->
-    <div style="padding:24px 24px 16px;text-align:center;background:#fff;border-bottom:1px solid #eaecf0;">
-      {logo_img}
-      <p style="margin:10px 0 4px;font-size:10px;color:#bbb;letter-spacing:2px;text-transform:uppercase;font-weight:600;">Raport Weryfikacji Kontrahenta</p>
-      <p style="margin:0;font-size:11px;color:#ccc;">Wygenerowany {datetime.datetime.now().strftime('%d.%m.%Y')} o {datetime.datetime.now().strftime('%H:%M')} przez Vato KYC Tool</p>
-    </div>
-
-    <div style="padding:22px 26px 20px;">
-
-      <!-- WYNIK SCORINGOWY -->
-      <div style="display:table;width:100%;padding:16px 20px;background:{bg_color};border-radius:10px;border:1px solid {border_color};margin-bottom:22px;box-sizing:border-box;">
-        <div style="display:table-cell;text-align:center;padding-right:18px;border-right:1px solid {border_color};width:90px;vertical-align:middle;">
-          <p style="margin:0;font-size:36px;font-weight:800;color:{text_color};line-height:1;">{total_score}</p>
-          <p style="margin:3px 0 0;font-size:10px;color:#aaa;letter-spacing:1px;text-transform:uppercase;">/ 40 pkt</p>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Raport Weryfikacji KYC</h1>
+            <p>Identyfikator NIP: {nip}</p>
+        </div>
+        <div class="content">
+            <div class="score-box">
+                <p class="score-val">{total_score} / 60</p>
+                <p class="score-label">Ocena Kontrahenta</p>
+                <p class="score-recommendation">Rekomendacja: {recommendation}</p>
+            </div>
+            
+            <div class="section-title">Szczegóły oceny</div>
+            <ul class="details-list">
+                {details_items}
+            </ul>
         </div>
         <div style="display:table-cell;padding-left:18px;vertical-align:middle;">
           <p style="margin:0;font-size:15px;font-weight:700;color:{text_color};">{recommendation}</p>
@@ -345,8 +383,8 @@ class BasicView(ctk.CTkFrame):
             )
             
             # Tekstowy mockup raportu do wyświetlenia w oknie wyników GUI
-            gui_text = f"--- WYNIK DLA NIP: {nip} ---\nFirma uzyskała {total_score}/40 pkt.\nRekomendacja: {recommendation}\n\nSzczegóły:\n"
-            gui_text += "\n".join([f"- {d}" for d in result["details"]])
+            gui_text = f"--- WYNIK DLA NIP: {nip} ---\nFirma uzyskała {total_score}/60 pkt.\nRekomendacja: {recommendation}\n\nSzczegóły:\n"
+            gui_text += "\n".join([f"- {d}" for d in score_data["justifications"]])
 
             success_msg = f"Raport pomyślnie wysłany na {user_email}.\n\n{gui_text}"
             popup_msg = f"Raport wygenerowany i wysłany na {user_email}."
