@@ -16,6 +16,8 @@ class ScoringResult(BaseModel):
     reg_score: int
     cap_score: int
     bailiff_score: int
+    credibility_score: int
+    sanctions_score: int
     color_code: str
     categories: List[CategoryScore]
     justifications: List[str]
@@ -28,6 +30,8 @@ async def enrich(data: ContractorData) -> ContractorData:
     age_score = 0
     reg_score = 0
     cap_score = 0
+    credibility_score = 0
+    sanctions_score = 20
     bailiff_score = 0
     bailiff_status = "POZYTYWNY"
     
@@ -53,9 +57,20 @@ async def enrich(data: ContractorData) -> ContractorData:
     ))
     
     # Status Rejestorwy
+    status_vat = str(getattr(data, 'status_vat', 'NIEZNANY') or 'NIEZNANY').upper()
+    if country_code == "PL":
+        if "CZYNNY" in status_vat:
+            credibility_score = 20
+            justifications.append(f"Podatnik figuruje jako czynnik platnik VAT na bialej liscie")
+        else:
+            credibility_score = 0
+            justifications.append(f"Podatnik nie figuruje jako czynnik platnik VAT na bialej liscie (status: {status_vat})")
+    else:
+        credibility_score = 20
+        justifications.append(f"Brak mozliwosci weryfikacji statusu VAT dla kraju {country_code}.")
+    
     
     legal_status = (getattr(data, 'status_prawny', 'NIEZNANY') or 'NIEZNANY' ).upper()
-    status_vat = str(getattr(data, 'status_vat', 'NIEZNANY') or 'NIEZNANY').upper()
     on_whitelist = getattr(data, 'rachunek_na_bialej_liscie', False)
     
     if country_code == "PL":
@@ -113,16 +128,24 @@ async def enrich(data: ContractorData) -> ContractorData:
         status = bailiff_status if country_code == "PL" else "NIEZNANY"
     ))
     
-    total_score = age_score + reg_score + cap_score + bailiff_score 
+    has_sanctions = getattr(data, 'on_sanctions_list', None)
+    if has_sanctions is True:
+        sanctions_score = 0
+        justifications.append("Podmiot figuruje na oficjalnej liscie sankcji.")
+    else:
+        sanctions_score = 20
+        justifications.append("Brak wpisow o sankcjach na oficjalnych listach.")
+    
+    total_score = age_score + reg_score + cap_score + bailiff_score + credibility_score + sanctions_score
     
     if has_bailiff is True:
         bailiff_score = -20
         risk_level = "KRYTYCZNE (Egzekucja komornicza)"
         color_code = "red"
-    elif total_score >=41:
+    elif total_score >=66:
         risk_level = "Zagrozenie niskie (Zaufany kontrahent)"
         color_code = "green"
-    elif total_score < 40 and total_score >= 20:
+    elif total_score < 66 and total_score >= 30:
         risk_level = "Zagrozenie srednie (Zalecana ostroznosc)"
         color_code = "yellow"
     else:
@@ -136,6 +159,8 @@ async def enrich(data: ContractorData) -> ContractorData:
         reg_score=reg_score,
         cap_score=cap_score,
         bailiff_score=bailiff_score,
+        credibility_score=credibility_score,
+        sanctions_score=sanctions_score,
         color_code=color_code,
         categories=categories_results,
         justifications=justifications
