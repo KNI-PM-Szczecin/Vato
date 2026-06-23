@@ -14,8 +14,8 @@
 
 | | |
 |:---:|:---:|
-| <img src=".github/screenshots/screenshot1.png" width="400" alt="Main View" /> | <img src=".github/screenshots/screenshot2.png" width="400" alt="Batch Verification" /> |
-| <img src=".github/screenshots/screenshot3.png" width="400" alt="Generated Report" /> | <img src=".github/screenshots/screenshot4.png" width="400" alt="Settings & Export" /> |
+| <img src=".github/screenshots/base_dark.png" width="400" alt="Main View - Dark Mode" /> | <img src=".github/screenshots/base_white.png" width="400" alt="Main View - Light Mode" /> |
+| <img src=".github/screenshots/adv_dark.png" width="400" alt="Batch view - Dark Mode" /> | <img src=".github/screenshots/adv_white.png" width="400" alt="Batch view - Light Mode" /> |
 
 ---
 
