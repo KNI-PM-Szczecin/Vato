@@ -7,21 +7,21 @@ import threading
 from typing import Callable
 
 from models.contractor import ContractorData, ScoreResult
-from services import regon_client, krs_client, ceidg_client, vat_client
+from services import entity_detector, krs_client, ceidg_client, vat_client
 from scoring.evaluator import evaluate_contractor
 
 
 async def _fetch_and_score(nip: str, bank_account: str | None) -> ScoreResult:
     data = ContractorData(nip=nip, bank_account=bank_account)
 
-    # Identify entity type, then fetch legal status
-    entity_type = await regon_client.RegonClient().identify(nip)
+    # Identify entity type (KRS public API, no key needed) → fetch legal status
+    entity_type = await entity_detector.detect(nip)
     if entity_type == "KRS":
         data = await krs_client.enrich(data)
     else:
         data = await ceidg_client.enrich(data)
 
-    # Always check VAT whitelist
+    # Always check VAT whitelist (public, no key needed)
     data = await vat_client.enrich(data)
 
     return evaluate_contractor(data)
