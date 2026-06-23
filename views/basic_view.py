@@ -86,22 +86,39 @@ class BasicView(ctk.CTkFrame):
 
     def _async_validate(self, nip, method):
         try:
-            company_data = api_test.fetch_company_data(nip)
-            result = api_test.evaluate_contractor(company_data)
+            import asyncio
+            from models.contractor import ContractorData
+            from scoring.scorer import enrich
+            import datetime
+            
+            company_dict = api_test.fetch_company_data(nip)
+            cdata = ContractorData(
+                nip=company_dict["nip"],
+                status_prawny=company_dict.get("legal_status", "NIEZNANY"),
+                data_rozpoczecia=datetime.date.fromisoformat(company_dict["start_date"]) if company_dict.get("start_date") else None,
+                status_vat=company_dict.get("vat_status", "NIEZNANY"),
+                rachunek_na_bialej_liscie=company_dict.get("account_on_whitelist", False),
+                share_capital=100000,
+                has_bailiff_proceedings=False
+            )
+            
+            cdata = asyncio.run(enrich(cdata))
+            score_data = cdata.scoring
+            
+            total = score_data['total_score']
+            recommendation = score_data['risk_level']
+            color = score_data['color_code']
 
-            if result["total"] >= 20:
-                recommendation = "Akceptacja (niskie ryzyko)."
+            if color == "green":
                 status_color = "success"
-            elif result["total"] >= 0:
-                recommendation = "Wymagana weryfikacja."
+            elif color == "yellow":
                 status_color = "warning"
             else:
-                recommendation = "Odrzucenie (wysokie ryzyko!)."
                 status_color = "error"
                 
-            quick_report = f"Firma uzyskała {result['total']}/40 pkt.\nRekomendacja: {recommendation}"
+            quick_report = f"Firma uzyskała {total}/60 pkt.\nRekomendacja: {recommendation}"
             
-            details = "\n".join([f"- {d}" for d in result["details"]])
+            details = "\n".join([f"- {d}" for d in score_data["justifications"]])
             full_report = f"--- WYNIK DLA {method}: {nip} ---\n{quick_report}\n\nSzczegóły:\n{details}"
             
             self.after(0, lambda: self.append_result(full_report))
@@ -146,26 +163,39 @@ class BasicView(ctk.CTkFrame):
         Wszystkie operacje są wykonywane asynchronicznie w tle.
         """
         try:
+            import asyncio
+            from models.contractor import ContractorData
+            from scoring.scorer import enrich
             import datetime
-            company_data = api_test.fetch_company_data(nip)
-            result = api_test.evaluate_contractor(company_data)
+            
+            company_dict = api_test.fetch_company_data(nip)
+            cdata = ContractorData(
+                nip=company_dict["nip"],
+                status_prawny=company_dict.get("legal_status", "NIEZNANY"),
+                data_rozpoczecia=datetime.date.fromisoformat(company_dict["start_date"]) if company_dict.get("start_date") else None,
+                status_vat=company_dict.get("vat_status", "NIEZNANY"),
+                rachunek_na_bialej_liscie=company_dict.get("account_on_whitelist", False),
+                share_capital=100000,
+                has_bailiff_proceedings=False
+            )
+            cdata = asyncio.run(enrich(cdata))
+            score_data = cdata.scoring
 
-            # Określenie rekomendacji i kolorów raportu na podstawie punktacji
-            total_score = result["total"]
-            if total_score >= 20:
-                recommendation = "Akceptacja (niskie ryzyko)"
+            total_score = score_data['total_score']
+            recommendation = score_data['risk_level']
+            color = score_data['color_code']
+            
+            if color == "green":
                 bg_color = "#e8f5e9"
                 border_color = "#c8e6c9"
                 text_color = "#2e7d32"
                 status_color = "success"
-            elif total_score >= 0:
-                recommendation = "Wymagana dodatkowa weryfikacja"
+            elif color == "yellow":
                 bg_color = "#fff3e0"
                 border_color = "#ffe0b2"
                 text_color = "#e65100"
                 status_color = "warning"
             else:
-                recommendation = "Odrzucenie (wysokie ryzyko!)"
                 bg_color = "#ffebee"
                 border_color = "#ffcdd2"
                 text_color = "#c62828"
@@ -173,7 +203,7 @@ class BasicView(ctk.CTkFrame):
 
             # Budowanie listy szczegółów oceny w formacie HTML
             details_items = ""
-            for detail in result["details"]:
+            for detail in score_data["justifications"]:
                 details_items += f"<li>{detail}</li>"
 
             current_year = datetime.date.today().year
@@ -287,7 +317,7 @@ class BasicView(ctk.CTkFrame):
         </div>
         <div class="content">
             <div class="score-box">
-                <p class="score-val">{total_score} / 40</p>
+                <p class="score-val">{total_score} / 60</p>
                 <p class="score-label">Ocena Kontrahenta</p>
                 <p class="score-recommendation">Rekomendacja: {recommendation}</p>
             </div>
@@ -314,8 +344,8 @@ class BasicView(ctk.CTkFrame):
             )
             
             # Tekstowy mockup raportu do wyświetlenia w oknie wyników GUI
-            gui_text = f"--- WYNIK DLA NIP: {nip} ---\nFirma uzyskała {total_score}/40 pkt.\nRekomendacja: {recommendation}\n\nSzczegóły:\n"
-            gui_text += "\n".join([f"- {d}" for d in result["details"]])
+            gui_text = f"--- WYNIK DLA NIP: {nip} ---\nFirma uzyskała {total_score}/60 pkt.\nRekomendacja: {recommendation}\n\nSzczegóły:\n"
+            gui_text += "\n".join([f"- {d}" for d in score_data["justifications"]])
 
             self.after(0, lambda: PopupMessage("Sukces", f"Raport wygenerowany i wysłany na {user_email}.", status=status_color))
             self.after(0, lambda: self.append_result(f"Raport pomyślnie wysłany na {user_email}.\n\n{gui_text}"))
