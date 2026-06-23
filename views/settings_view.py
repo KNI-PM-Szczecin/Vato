@@ -69,10 +69,75 @@ class SettingsView(ctk.CTkFrame):
         self.apply_color_btn = ctk.CTkButton(self.custom_color_frame, text=t("settings.apply"), width=80, command=self.apply_custom_color)
         self.apply_color_btn.grid(row=0, column=2)
 
+        # --- Card: Głos TTS ---
+        self.voice_card = ctk.CTkFrame(self, corner_radius=10)
+        self.voice_card.grid(row=3, column=0, sticky="ew", padx=20, pady=(10, 15))
+        self.voice_card.grid_columnconfigure(0, weight=1)
+        
+        self.voice_title = ctk.CTkLabel(self.voice_card, text=t("settings.tts_voice"), font=ctk.CTkFont(size=16, weight="bold"))
+        self.voice_title.grid(row=0, column=0, sticky="w", padx=20, pady=(15, 10))
+        
+        self.voice_inner_frame = ctk.CTkFrame(self.voice_card, fg_color="transparent")
+        self.voice_inner_frame.grid(row=1, column=0, sticky="w", padx=20, pady=(0, 15))
+
+        self.voice_selector = ctk.CTkComboBox(
+            self.voice_inner_frame, 
+            values=[],
+            command=self.change_voice
+        )
+        self.voice_selector.grid(row=0, column=0, sticky="w")
+        
+        is_dark = getattr(self.master, "is_dark_mode", True)
+        self.test_voice_btn = ctk.CTkButton(
+            self.voice_inner_frame,
+            text="",
+            image=getattr(self.master, "speaker_on_image", None),
+            width=40,
+            height=40,
+            corner_radius=20,
+            fg_color="transparent",
+            hover_color="gray30" if is_dark else "gray70",
+            command=self.test_voice
+        )
+        self.test_voice_btn.grid(row=0, column=1, sticky="w", padx=(10, 0))
+        
+        self._update_voice_options(get_language())
+
+    def test_voice(self):
+        voice = self.voice_selector.get()
+        phrase = t("settings.tts_test", name=voice)
+        from elevenlabs_integration.tts import play_text
+        play_text(phrase, override_voice=voice, show_errors=True)
+
     def change_language(self, choice):
         lang = "en" if choice == "English" else "pl"
+        from services.i18n import set_language
         set_language(lang)
-        # We need to trigger an update, handled by the app
+        app = self.winfo_toplevel()
+        if hasattr(app, "config_manager"):
+            app.config_manager.set("language", lang)
+        self._update_voice_options(lang)
+
+    def _update_voice_options(self, lang):
+        voices = {
+            "pl": ["Adam", "Antoni", "Domi", "Rachel"],
+            "en": ["Rachel", "Drew", "Clyde", "Mimi", "Fin"]
+        }
+        available_voices = voices.get(lang, voices["en"])
+        self.voice_selector.configure(values=available_voices)
+        
+        app = self.winfo_toplevel()
+        default_voice = available_voices[0] if available_voices else "Rachel"
+        saved_voice = default_voice
+        if hasattr(app, "config_manager"):
+            saved_voice = app.config_manager.get(f"tts_voice_{lang}", default_voice)
+        self.voice_selector.set(saved_voice)
+
+    def change_voice(self, choice):
+        lang = get_language()
+        app = self.winfo_toplevel()
+        if hasattr(app, "config_manager"):
+            app.config_manager.set(f"tts_voice_{lang}", choice)
 
     def update_texts(self):
         self.title_label.configure(text=t("settings.title"))
@@ -80,6 +145,7 @@ class SettingsView(ctk.CTkFrame):
         self.accent_title.configure(text=t("settings.accent_title"))
         self.custom_color_label.configure(text=t("settings.custom_color"))
         self.apply_color_btn.configure(text=t("settings.apply"))
+        self.voice_title.configure(text=t("settings.tts_voice"))
 
     def set_custom_color(self, hex_color):
         self.custom_color_entry.delete(0, 'end')

@@ -248,6 +248,11 @@ class AdvancedView(ctk.CTkFrame):
                 PopupMessage(t("popup.info"), t("advanced.success"), status="success")
                 self.append_log(t("advanced.success"))
                 
+                app = self.winfo_toplevel()
+                if hasattr(app, 'is_muted') and not getattr(app, 'is_muted', True):
+                    from elevenlabs_integration.tts import play_text
+                    play_text(t("app.report_generated"))
+                
                 if self.open_file_var.get() == "on" and dest_path and os.path.exists(dest_path):
                     self.append_log(t("advanced.opening_file", file=dest_path))
                     try:

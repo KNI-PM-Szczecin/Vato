@@ -1,7 +1,8 @@
 {
   "app": {
     "title": "Vato - Contractor Verification",
-    "tab_history": "History"
+    "tab_history": "History",
+    "report_generated": "Report generated"
   },
   "tabs": {
     "basic": "Basic View",
@@ -78,7 +79,9 @@
     "custom_color": "Custom Color (HEX):",
     "apply": "Apply",
     "language": "App Language",
-    "invalid_color": "Invalid color format. Use HEX, e.g. #3B8ED0"
+    "invalid_color": "Invalid color format. Use HEX, e.g. #3B8ED0",
+    "tts_voice": "TTS Voice (ElevenLabs)",
+    "tts_test": "I am the speech model {name}"
   },
   "email": {
     "subject": "KYC Verification Report - {nip}",

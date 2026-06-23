@@ -1,7 +1,8 @@
 {
   "app": {
     "title": "Vato - Weryfikacja Kontrahentów",
-    "tab_history": "Historia"
+    "tab_history": "Historia",
+    "report_generated": "Wygenerowano raport"
   },
   "tabs": {
     "basic": "Widok Podstawowy",
@@ -78,7 +79,9 @@
     "custom_color": "Własny kolor (HEX):",
     "apply": "Zastosuj",
     "language": "Język aplikacji",
-    "invalid_color": "Niepoprawny format koloru. Użyj HEX, np. #3B8ED0"
+    "invalid_color": "Niepoprawny format koloru. Użyj HEX, np. #3B8ED0",
+    "tts_voice": "Głos lektora (ElevenLabs)",
+    "tts_test": "Jestem modelem mowy {name}"
   },
   "email": {
     "subject": "Raport weryfikacji KYC - {nip}",

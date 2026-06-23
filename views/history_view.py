@@ -91,12 +91,22 @@ class HistoryView(ctk.CTkFrame):
         app = self.winfo_toplevel()
         try:
             if etype == "NIP":
-                app.main_tabs.set(t("tabs.basic"))
+                tab_name = app.main_tabs._name_list[0]
+                if tab_name in app.main_tabs._segmented_button._buttons_dict:
+                    app.main_tabs._segmented_button._buttons_dict[tab_name].invoke()
+                else:
+                    app.main_tabs.set(tab_name)
+                
                 app.basic_view.nip_input.delete(0, "end")
                 app.basic_view.nip_input.insert(0, value)
                 app.basic_view.method_selector.set("NIP")
             elif etype == "BATCH":
-                app.main_tabs.set(t("tabs.advanced"))
+                tab_name = app.main_tabs._name_list[1]
+                if tab_name in app.main_tabs._segmented_button._buttons_dict:
+                    app.main_tabs._segmented_button._buttons_dict[tab_name].invoke()
+                else:
+                    app.main_tabs.set(tab_name)
+                    
                 app.advanced_view.load_input.delete(0, "end")
                 app.advanced_view.load_input.insert(0, value)
         except Exception as e:

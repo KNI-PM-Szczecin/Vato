@@ -236,6 +236,10 @@ class BasicView(ctk.CTkFrame):
                 self.append_result(t("basic.report_sent", email="PDF", text=target_file))
                 self.update_idletasks()
                 PopupMessage(t("popup.success"), "Zapisano raport PDF", status="success")
+                app = self.winfo_toplevel()
+                if hasattr(app, 'is_muted') and not getattr(app, 'is_muted', True):
+                    from elevenlabs_integration.tts import play_text
+                    play_text(t("app.report_generated"))
 
             self.after(0, _show_success)
         except Exception as e:
@@ -453,6 +457,10 @@ class BasicView(ctk.CTkFrame):
                 self.append_result(t("basic.report_sent", email=user_email, text=gui_text))
                 self.update_idletasks()
                 PopupMessage(t("popup.success"), t("basic.report_sent", email=user_email, text=""), status=status_color)
+                app = self.winfo_toplevel()
+                if hasattr(app, 'is_muted') and not getattr(app, 'is_muted', True):
+                    from elevenlabs_integration.tts import play_text
+                    play_text(t("app.report_generated"))
 
             self.after(0, _show_report_result)
         except Exception as e:

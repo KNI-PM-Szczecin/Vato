@@ -101,7 +101,15 @@ class App(ctk.CTk):
         )
         self.close_settings_btn.pack()
 
-        self.accent_color = "#3B8ED0" # default ctk blue
+        from services.config_manager import ConfigManager
+        self.config_manager = ConfigManager()
+        
+        # Load language setting before rendering anything
+        saved_lang = self.config_manager.get("language", "pl")
+        from services.i18n import set_language
+        set_language(saved_lang)
+
+        self.accent_color = self.config_manager.get("accent_color", "#3B8ED0")
         
         try:
             self.sun_image = ctk.CTkImage(Image.open(os.path.join(base_path, "static", "sun.png")), size=(24, 24))
@@ -118,7 +126,7 @@ class App(ctk.CTk):
             self.speaker_off_image = None
 
         self.is_dark_mode = ctk.get_appearance_mode() == "Dark"
-        self.is_muted = False
+        self.is_muted = self.config_manager.get("is_muted", False)
         
         self.speaker_btn = ctk.CTkButton(
             self.top_right_main_frame,
@@ -194,6 +202,7 @@ class App(ctk.CTk):
     def toggle_speaker(self):
         self.is_muted = not self.is_muted
         self.speaker_btn.configure(image=self.speaker_off_image if self.is_muted else self.speaker_on_image)
+        self.config_manager.set("is_muted", self.is_muted)
         state = "Muted" if self.is_muted else "On"
         print(f"Audio: {state}")
 
@@ -230,6 +239,7 @@ class App(ctk.CTk):
 
     def apply_accent_color(self, hex_color):
         self.accent_color = hex_color
+        self.config_manager.set("accent_color", hex_color)
         
         import os
         from PIL import Image
