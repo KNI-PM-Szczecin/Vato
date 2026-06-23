@@ -8,7 +8,7 @@ Desktop app for logistics analysts to verify contractor credibility. Hackathon M
 
 ## Tech Stack
 
-- **Language**: Python 3.11+
+- **Language**: Python 3.12.0
 - **GUI**: CustomTkinter
 - **Async**: `asyncio` + `threading` — background threads run async coroutines so the GUI never freezes
 - **LLM**: Anthropic Claude API (primary), OpenAI optional
