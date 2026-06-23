@@ -17,13 +17,15 @@ def print_scoring_dashboard(contractor: ContractorData):
     reg = sc.get("reg_score", 0)
     cap = sc.get("cap_score", 0)
     bailiff = sc.get("bailiff_score", 0)
+    credibility = sc.get("credibility_score", 0)
+    sanctions = sc.get("sanctions_score", 0)
     
     # Funkcja pomocnicza do określania etykiety (POZYTYWNY / OSTRZEŻENIE)
     def get_status_label(score, max_possible):
         return "POZYTYWNY" if score >= max_possible else "OSTRZEZENIE"
 
     print("\n[REZULTAT KOŃCOWY SCORINGU]")
-    print(f"PUNKTY: {total_score}/60")
+    print(f"PUNKTY: {total_score}/100")
     print(f"POZIOM RYZYKA: {risk_level}")
     print()
     print(" Cząstkowe oceny kategorii:")
@@ -31,6 +33,8 @@ def print_scoring_dashboard(contractor: ContractorData):
     print(f"  - Status formalno-prawny: {reg}/15 ({get_status_label(reg, 15)})")
     print(f"  - Kapital zakladowy: {cap}/10 ({get_status_label(cap, 10)})")
     print(f"  - Postepowania komornicze: {bailiff}/25 ({get_status_label(bailiff, 25)})")
+    print(f"  - Wiarygodnosc: {credibility}/20 ({get_status_label(credibility, 20)})")
+    print(f"  - Sankcje: {sanctions}/20 ({get_status_label(sanctions, 20)})")
     print()
     print("Uzasadnienia generowane systemowo:")
     

@@ -1,6 +1,15 @@
 import customtkinter as ctk
 import sys
 import os
+import ctypes
+
+myappid = 'Vato.HackathonMorski.1.0'
+
+if sys.platform.startswith("win"):
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except Exception as e:
+        print(f"Nie udało się ustawić AppUserModelID: {e}")
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
