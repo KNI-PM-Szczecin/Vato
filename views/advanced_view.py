@@ -47,11 +47,14 @@ class AdvancedView(ctk.CTkFrame):
         self.actions_title = ctk.CTkLabel(self.actions_card, text="Eksport i Akcje", font=ctk.CTkFont(size=16, weight="bold"))
         self.actions_title.grid(row=0, column=0, sticky="w", padx=20, pady=(15, 10))
 
-        self.email_input = ctk.CTkEntry(self.actions_card, placeholder_text="Adres e-mail do wysyłki podsumowania", height=32)
-        self.email_input.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 15))
+        self.email_input = ctk.CTkEntry(self.actions_card, placeholder_text="Adres(y) e-mail do wysyłki (można wkleić listę)", height=32)
+        self.email_input.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 2))
+
+        self.email_hint = ctk.CTkLabel(self.actions_card, text="Wiele adresów oddziel spacją, przecinkiem (,) lub średnikiem (;)", font=ctk.CTkFont(size=11), text_color="gray")
+        self.email_hint.grid(row=2, column=0, sticky="w", padx=20, pady=(0, 15))
 
         self.checkbox_frame = ctk.CTkFrame(self.actions_card, fg_color="transparent")
-        self.checkbox_frame.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 15))
+        self.checkbox_frame.grid(row=3, column=0, sticky="ew", padx=20, pady=(0, 15))
 
         self.open_file_var = ctk.StringVar(value="off")
         self.open_file_checkbox = ctk.CTkCheckBox(self.checkbox_frame, text="Otwórz plik po zakończeniu", variable=self.open_file_var, onvalue="on", offvalue="off")
@@ -65,13 +68,13 @@ class AdvancedView(ctk.CTkFrame):
             self.actions_card, text="Waliduj i zapisz wyniki", height=35,
             command=self.execute_quick_validation
         )
-        self.quick_validate_btn.grid(row=3, column=0, sticky="ew", padx=20, pady=(0, 10))
+        self.quick_validate_btn.grid(row=4, column=0, sticky="ew", padx=20, pady=(0, 10))
 
         self.generate_report_btn = ctk.CTkButton(
             self.actions_card, text="Waliduj, zapisz i wyślij E-mail", height=35, fg_color="#2E7D32", hover_color="#1B5E20",
             command=self.execute_report_generation
         )
-        self.generate_report_btn.grid(row=4, column=0, sticky="ew", padx=20, pady=(0, 20))
+        self.generate_report_btn.grid(row=5, column=0, sticky="ew", padx=20, pady=(0, 20))
 
         # --- Card 3: Status ---
         self.status_card = ctk.CTkFrame(self, corner_radius=10)
@@ -253,15 +256,30 @@ class AdvancedView(ctk.CTkFrame):
             self.after(0, lambda err=str(e): PopupMessage("Błąd", f"Błąd zapisu do pliku: {err}", status="error"))
             self.after(0, lambda err=str(e): self.append_log(f"Błąd zapisu: {err}"))
 
+    def get_parsed_emails(self, text):
+        import re
+        # Zamień nowe linie, średniki, dwukropki, przecinki na spacje
+        text = re.sub(r'[\n\r;,:]', ' ', text)
+        return [e.strip() for e in text.split() if e.strip()]
+
     def is_email_valid(self, email):
         regex_pattern = r"^[\w\.-]+@[\w\.-]+\.\w+$"
         return re.match(regex_pattern, email) is not None
 
     def execute_report_generation(self):
-        user_email = self.email_input.get().strip()
-        if not self.is_email_valid(user_email):
-            PopupMessage("Błąd", "Podano niepoprawny adres email.", status="error")
+        user_email_raw = self.email_input.get().strip()
+        emails = self.get_parsed_emails(user_email_raw)
+        
+        if not emails:
+            PopupMessage("Błąd", "Nie podano żadnego adresu email.", status="error")
             return
+            
+        for email in emails:
+            if not self.is_email_valid(email):
+                PopupMessage("Błąd", f"Niepoprawny format adresu: {email}", status="error")
+                return
+                
+        user_email = ", ".join(emails)
 
         src = self.load_input.get().strip()
         if not src:

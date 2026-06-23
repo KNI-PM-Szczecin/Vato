@@ -41,14 +41,17 @@ class BasicView(ctk.CTkFrame):
         self.report_title = ctk.CTkLabel(self.report_card, text="Eksport i Powiadomienia", font=ctk.CTkFont(size=16, weight="bold"))
         self.report_title.grid(row=0, column=0, sticky="w", padx=20, pady=(15, 10))
 
-        self.email_input = ctk.CTkEntry(self.report_card, placeholder_text="Adres e-mail odbiorcy (opcjonalnie)", height=32)
-        self.email_input.grid(row=1, column=0, padx=20, pady=(0, 15), sticky="ew")
+        self.email_input = ctk.CTkEntry(self.report_card, placeholder_text="Adres(y) e-mail (można wkleić całą listę)", height=32)
+        self.email_input.grid(row=1, column=0, padx=20, pady=(0, 2), sticky="ew")
+
+        self.email_hint = ctk.CTkLabel(self.report_card, text="Wiele adresów oddziel spacją, przecinkiem (,) lub średnikiem (;)", font=ctk.CTkFont(size=11), text_color="gray")
+        self.email_hint.grid(row=2, column=0, sticky="w", padx=20, pady=(0, 15))
 
         self.generate_report_btn = ctk.CTkButton(
             self.report_card, text="Generuj Raport i Wyślij", height=35, fg_color="#2E7D32", hover_color="#1B5E20",
             command=self.execute_report_generation
         )
-        self.generate_report_btn.grid(row=2, column=0, padx=20, pady=(0, 20), sticky="ew")
+        self.generate_report_btn.grid(row=3, column=0, padx=20, pady=(0, 20), sticky="ew")
 
         # --- Card 3: Results ---
         self.result_card = ctk.CTkFrame(self, corner_radius=10)
@@ -129,22 +132,39 @@ class BasicView(ctk.CTkFrame):
         finally:
             self.after(0, lambda: self.quick_validate_btn.configure(state="normal", text="Szybka walidacja"))
 
+    def get_parsed_emails(self, text):
+        import re
+        text = re.sub(r'[\n\r;,:]', ' ', text)
+        return [e.strip() for e in text.split() if e.strip()]
+
     def is_email_valid(self, email):
         regex_pattern = r"^[\w\.-]+@[\w\.-]+\.\w+$"
         return re.match(regex_pattern, email) is not None
 
     def execute_report_generation(self):
-        user_email = self.email_input.get().strip()
-        if not user_email:
+        user_email_raw = self.email_input.get().strip()
+        emails = self.get_parsed_emails(user_email_raw)
+        
+        # Fallback to default
+        if not emails:
             try:
                 email_service = EmailService()
-                user_email = email_service.recipient_email
+                default = email_service.recipient_email
+                if default:
+                    emails = self.get_parsed_emails(default)
             except Exception:
-                user_email = None
+                pass
 
-        if not user_email or not self.is_email_valid(user_email):
+        if not emails:
             PopupMessage("Błąd walidacji", "Podano niepoprawny adres email lub brak domyślnego odbiorcy.", status="error")
             return
+            
+        for email in emails:
+            if not self.is_email_valid(email):
+                PopupMessage("Błąd walidacji", f"Niepoprawny adres email: {email}", status="error")
+                return
+                
+        user_email = ", ".join(emails)
 
         nip = self.nip_input.get().strip()
         if not nip:
