@@ -1,0 +1,2 @@
+# Acessibility Feature
+Once the report has been generated , eleven labs api will be used in order to generate calm Ai voice in order to read out loud the report, which help blind and elederly people understand the data betteer or it will them even in the situation, when they can't look directly at their computer 
