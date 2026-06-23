@@ -35,6 +35,9 @@ class ContractorData(BaseModel):
     domain_age_days: int | None = None
     days_since_last_post: int | None = None
     website_nip_matched: bool | None = None
+    suspicious_domain: bool | None = None
+    news_found: bool | None = None
+    news_anomalies: list | None = None
     scoring: Any = None 
 
 
