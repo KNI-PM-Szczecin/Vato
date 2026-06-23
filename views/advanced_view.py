@@ -196,7 +196,7 @@ class AdvancedView(ctk.CTkFrame):
                 score = score_data['total_score']
                 rec = score_data['risk_level']
                     
-                score_text = f"{score}/60 - {rec}"
+                score_text = f"{score}/100 - {rec}"
                 results_dict[nip] = score_text
                 self.after(0, lambda n=nip, s=score_text: self.append_log(t("advanced.checked_nip", nip=n, score=s)))
             except Exception as e:
