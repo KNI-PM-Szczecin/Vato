@@ -1,0 +1,3 @@
+# Email Send confirmation 
+This file is responsible for sending the email confirmation.
+Importan rule to consider is the fact that the entire program will be designed arround the basis, that a user can type multiple different company Identification numbers (NIP's), and the program will have to send those reports, created with the help of panda , in the format, one Excel Spreadsheet / Number, and for example, if the user will enter 10-15 numbers, the program will merge those Spreasheets to an exel spreadsheet 
