@@ -58,37 +58,7 @@ async def _fetch_via_api(nip: str, api_key: str) -> dict:
         return {}
 
 
-# ── Portal scraper ────────────────────────────────────────────────────────────
-
-def _hidden(html: str, name: str) -> str:
-    m = re.search(rf'id="{re.escape(name)}"[^>]*value="([^"]*)"', html)
-    return m.group(1) if m else ""
-
-
-async def _fetch_via_scraper(nip: str) -> dict:
-    try:
-        async with httpx.AsyncClient(
-            headers=_HEADERS, follow_redirects=True, timeout=20
-        ) as client:
-            # Step 1 — load the form to get ASP.NET hidden fields
-            r = await client.get(PORTAL_URL)
-            r.raise_for_status()
-            html = r.text
-
-            form_data = {
-                "__VIEWSTATE": _hidden(html, "__VIEWSTATE"),
-                "__VIEWSTATEGENERATOR": _hidden(html, "__VIEWSTATEGENERATOR"),
-                "__EVENTVALIDATION": _hidden(html, "__EVENTVALIDATION"),
-                "__EVENTTARGET": "",
-                "__EVENTARGUMENT": "",
-                "ctl00$ContentPlaceHolder1$txtNIP": nip,
-                "ctl00$ContentPlaceHolder1$btnSzukaj": "Szukaj",
-            }
-
-            # Step 2 — submit search
-            r = await client.post(PORTAL_URL, data=form_data)
-            r.raise_for_status()
-            return _parse_portal_html(r.text)
+        return {"status_prawny": status, "data_rozpoczecia": data_rej, "share_capital": 0.0, "has_bailiff_proceedings": None}
 
     except Exception:
         return {}

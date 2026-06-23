@@ -55,6 +55,19 @@ async def fetch_krs_data(nip: str) -> dict:
                 .get("dzial1", {})
         )
         info = dzial1.get("danePodmiotu", {})
+        
+        kapital_info = dzial1.get("kapital", {}).get("wysokoscKapitaluZakladowego", {})
+        share_capital = kapital_info.get("wartosc")
+        if share_capital is not None:
+            share_capital = float(share_capital)
+            
+        dzial4 = body.get("dzial4", {})
+        has_bailiff = False
+        
+        if dzial4:
+            klucze_egzekucji = ["wpisyOPostepowaniuEgzekucyjnym", "ogloszeniaOPostepowaniuEgzekucyjnym"]
+            if any(klucz in dzial4 for klucz in klucze_egzekucji) or any("egzekuc" in str(k).lower() for k in dzial4.keys()):
+                has_bailiff = True
 
         data_rej = None
         data_rej_str = info.get("dataRejestracjiWKRS", "")

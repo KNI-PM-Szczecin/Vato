@@ -1,6 +1,7 @@
 from __future__ import annotations
 from datetime import date
 from enum import Enum
+from typing import Any
 from pydantic import BaseModel
 
 
@@ -17,14 +18,19 @@ class ContractorInput(BaseModel):
 
 class ContractorData(BaseModel):
     nip: str
+    country_code: str = "PL"
+    legal_name: str = "---"
     bank_account: str | None = None
-    legal_status: str = "UNKNOWN"
-    start_date: date | None = None
-    vat_status: str = "UNKNOWN"
-    account_on_whitelist: bool = False
-    address_changes_last_year: int = 0
-    board_changes_last_3_months: bool = False
-    frequent_legal_form_changes: bool = False
+    status_prawny: str = "NIEZNANY"
+    data_rozpoczecia: date | None = None
+    status_vat: str = "NIEZNANY"
+    rachunek_na_bialej_liscie: bool = False
+    zmiany_adresu_ostatni_rok: int = 0
+    wymiana_zarzadu_ostatnie_3msc: bool = False
+    czeste_zmiany_formy: bool = False
+    share_capital: float = None
+    has_bailiff_proceedings: bool = None
+    scoring: Any = None 
 
 
 class ScoreResult(BaseModel):
