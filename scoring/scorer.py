@@ -49,7 +49,8 @@ async def enrich(data: ContractorData) -> ContractorData:
             age_score = 5
             justifications.append(t("scorer.age_eu", country=country_code))
         else:
-            age_score = 0 
+            # Brak danych o dacie rejestracji (np. brak dostepu do KRS) = wynik neutralny
+            age_score = 5
             justifications.append(t("scorer.age_unknown"))
             
     categories_results.append(CategoryScore(
@@ -61,23 +62,27 @@ async def enrich(data: ContractorData) -> ContractorData:
     status_vat = str(getattr(data, 'status_vat', 'NIEZNANY') or 'NIEZNANY').upper()
     if country_code == "PL":
         if "CZYNNY" in status_vat:
-            credibility_score = 20
+            credibility_score = 15
             justifications.append(t("scorer.cred_pl_good"))
         else:
             credibility_score = 0
             justifications.append(t("scorer.cred_pl_bad", status=status_vat))
     else:
-        credibility_score = 20
+        credibility_score = 15
         justifications.append(t("scorer.cred_eu_unknown", country=country_code))
 
     legal_status = (getattr(data, 'status_prawny', 'NIEZNANY') or 'NIEZNANY' ).upper()
     on_whitelist = getattr(data, 'rachunek_na_bialej_liscie', False)
     
     if country_code == "PL":
-        if legal_status == "AKTYWNA": reg_score += 5
+        if legal_status == "AKTYWNA":
+            reg_score += 5
+        elif legal_status in ("NIEZNANY", "", None):
+            # Brak danych z KRS/CEIDG = neutralnie, nie karamy za niedostepnosc danych
+            reg_score += 2
         if "CZYNNY" in status_vat: reg_score += 5
         if on_whitelist: reg_score += 5
-        
+
         if reg_score < 15:
             justifications.append(t("scorer.reg_pl_bad", legal=legal_status, vat=status_vat, whitelist=on_whitelist))
         else:
@@ -96,6 +101,11 @@ async def enrich(data: ContractorData) -> ContractorData:
         category_name=t("scorer.cat_reg"), score=reg_score, max_score=15,
         status=t("scorer.status_pos") if reg_score == 15 else t("scorer.status_warn")
     ))
+
+    categories_results.append(CategoryScore(
+        category_name=t("scorer.cat_cred"), score=credibility_score, max_score=15,
+        status=t("scorer.status_pos") if credibility_score == 15 else t("scorer.status_warn")
+    ))
     
     # Kapital firmy
     if country_code != "PL":
@@ -104,8 +114,12 @@ async def enrich(data: ContractorData) -> ContractorData:
         justifications.append(t("scorer.cap_eu", country=country_code))
     else:
         share_capital = getattr(data, 'share_capital', None)
-        cap_score = 10 if (share_capital and share_capital >= 50000) else 5
-        
+        if share_capital is None:
+            # Brak danych o kapitale (np. brak KRS) = wynik neutralny
+            cap_score = 7
+        else:
+            cap_score = 10 if share_capital >= 50000 else 5
+
         has_bailiff = getattr(data, 'has_bailiff_proceedings', None)
         if has_bailiff is True:
             bailiff_score = 0
@@ -115,6 +129,11 @@ async def enrich(data: ContractorData) -> ContractorData:
             bailiff_score = 25
             bailiff_status = t("scorer.status_pos")
             justifications.append(t("scorer.bailiff_no"))
+        else:
+            # Brak danych z KRS = neutralna ocena, nie karamy za niedostepnosc rejestru
+            bailiff_score = 15
+            bailiff_status = t("scorer.status_unk")
+            justifications.append("Brak danych o postępowaniach komorniczych (dane niedostępne z KRS) — przyjęto ocenę neutralną.")
     
     categories_results.append(CategoryScore(
         category_name=t("scorer.cat_cap"), score=cap_score, max_score=10,
@@ -129,12 +148,79 @@ async def enrich(data: ContractorData) -> ContractorData:
     has_sanctions = getattr(data, 'on_sanctions_list', None)
     if has_sanctions is True:
         sanctions_score = 0
-        justifications.append(t("scorer.sanctions_yes"))
+        justifications.append("Podmiot figuruje na oficjalnej liscie sankcji.")
     else:
-        sanctions_score = 20
-        justifications.append(t("scorer.sanctions_no"))
+        sanctions_score = 15
+        justifications.append("Brak wpisow o sankcjach na oficjalnych listach.")
+        
+    categories_results.append(CategoryScore(
+        category_name=t("scorer.cat_sanc"), score=sanctions_score, max_score=15,
+        status=t("scorer.status_pos") if sanctions_score == 15 else t("scorer.status_warn")
+    ))
     
-    total_score = age_score + reg_score + cap_score + bailiff_score + credibility_score + sanctions_score
+    # Wiarygodność cyfrowa (Website scraping, SSL, Age, RSS)
+    web_score = 0
+    website_url = getattr(data, 'website_url', None)
+    
+    if website_url:
+        justifications.append(f"Zidentyfikowano oficjalną stronę WWW: {website_url}")
+        
+        # 1. SSL Check
+        ssl_valid = getattr(data, 'ssl_valid', False)
+        if ssl_valid:
+            web_score += 2
+            justifications.append("Witryna zabezpieczona poprawnym certyfikatem SSL/TLS (+2 pkt).")
+        else:
+            justifications.append("Witryna nie posiada aktywnego/poprawnego certyfikatu SSL/TLS (0 pkt).")
+            
+        # 2. Domain Age Check
+        domain_age = getattr(data, 'domain_age_days', None)
+        if domain_age is not None:
+            if domain_age > 730:
+                web_score += 3
+                justifications.append(f"Domena zarejestrowana ponad 2 lata temu ({domain_age} dni temu) (+3 pkt).")
+            elif domain_age > 180:
+                web_score += 1
+                justifications.append(f"Domena zarejestrowana ponad 6 miesięcy temu ({domain_age} dni temu) (+1 pkt).")
+            elif domain_age < 90:
+                justifications.append(f"Domena zarejestrowana niedawno ({domain_age} dni temu) (0 pkt).")
+            else:
+                justifications.append(f"Domena zarejestrowana {domain_age} dni temu (0 pkt).")
+        else:
+            justifications.append("Brak danych o wieku domeny w RDAP (0 pkt).")
+            
+        # 3. Activity Check
+        days_since_post = getattr(data, 'days_since_last_post', None)
+        if days_since_post is not None:
+            if days_since_post <= 90:
+                web_score += 3
+                justifications.append(f"Witryna aktywnie prowadzona, ostatnia aktywność {days_since_post} dni temu (+3 pkt).")
+            elif days_since_post <= 180:
+                web_score += 1
+                justifications.append(f"Umiarkowana aktywność witryny, ostatnia aktualizacja {days_since_post} dni temu (+1 pkt).")
+            else:
+                justifications.append(f"Witryna nie była aktualizowana od {days_since_post} dni (0 pkt).")
+        else:
+            justifications.append("Brak aktywnego kanału RSS lub nowych artykułów (0 pkt).")
+            
+        # 4. NIP Match Check
+        nip_matched = getattr(data, 'website_nip_matched', False)
+        if nip_matched:
+            web_score += 2
+            justifications.append("Zgodność tożsamości: NIP firmy odnaleziony na jej stronie WWW (+2 pkt).")
+        else:
+            justifications.append("NIP firmy nie został odnaleziony bezpośrednio na stronie głównej (0 pkt).")
+    else:
+        justifications.append("Nie odnaleziono oficjalnej witryny kontrahenta (0 pkt).")
+        
+    categories_results.append(CategoryScore(
+        category_name=t("scorer.cat_web"), 
+        score=web_score, 
+        max_score=10,
+        status="POZYTYWNY" if web_score >= 5 else ("OSTRZEŻENIE" if web_score >= 0 else "NEGATYWNY")
+    ))
+    
+    total_score = age_score + reg_score + cap_score + bailiff_score + credibility_score + sanctions_score + web_score
     
     if has_bailiff is True:
         bailiff_score = -20

@@ -30,6 +30,11 @@ class ContractorData(BaseModel):
     czeste_zmiany_formy: bool = False
     share_capital: float = None
     has_bailiff_proceedings: bool = None
+    website_url: str | None = None
+    ssl_valid: bool | None = None
+    domain_age_days: int | None = None
+    days_since_last_post: int | None = None
+    website_nip_matched: bool | None = None
     scoring: Any = None 
 
 
