@@ -29,9 +29,10 @@ class PopupMessage(ctk.CTkToplevel):
         )
         self.label.pack(pady=(30, 20), padx=20, fill="both", expand=True)
 
+        from services.i18n import t
         self.button = ctk.CTkButton(
-            self.main_frame,
-            text="Zrozumiałem",
+            self.main_frame, 
+            text=t("popup.ok_btn"), 
             command=self.destroy,
             width=120,
             fg_color=color_pair,

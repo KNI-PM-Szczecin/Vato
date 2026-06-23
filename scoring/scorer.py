@@ -2,6 +2,7 @@ from datetime import date
 from typing import List, Optional
 from pydantic import BaseModel
 from models.contractor import ContractorData
+from services.i18n import t
 
 class CategoryScore(BaseModel):
     category_name: str
@@ -33,7 +34,7 @@ async def enrich(data: ContractorData) -> ContractorData:
     credibility_score = 0
     sanctions_score = 20
     bailiff_score = 0
-    bailiff_status = "POZYTYWNY"
+    bailiff_status = t("scorer.status_pos")
     
     country_code = (getattr(data, 'country_code', 'PL') or 'PL').upper()    
     
@@ -42,34 +43,33 @@ async def enrich(data: ContractorData) -> ContractorData:
     if data_rozpoczecia and isinstance(data.data_rozpoczecia, date):
         years_in_business = date.today().year - data.data_rozpoczecia.year
         age_score = 10 if years_in_business >=5 else (5 if years_in_business >= 2 else 0)
-        justifications.append(f"Firma istnieje od {years_in_business} lat na rynku.")
+        justifications.append(t("scorer.age_years", years=years_in_business))
     else:
         if country_code != "PL":
             age_score = 5
-            justifications.append("Ogolne API UE nie udostepnia daty zalozenia dla kraju {country_code}.")
+            justifications.append(t("scorer.age_eu", country=country_code))
         else:
             age_score = 0 
-            justifications.append("Brak mozliwosci zweryfikowania daty otwarcia firmy.")
+            justifications.append(t("scorer.age_unknown"))
             
     categories_results.append(CategoryScore(
-        category_name="Doswiadczenie w biznesie", score = age_score, max_score = 10,
-        status = "POZYTYWNY" if age_score == 10 else "OSTRZEZENIE" 
+        category_name=t("scorer.cat_age"), score=age_score, max_score=10,
+        status=t("scorer.status_pos") if age_score == 10 else t("scorer.status_warn")
     ))
     
-    # Status Rejestorwy
+    # Status Rejestrowy & Wiarygodnosc
     status_vat = str(getattr(data, 'status_vat', 'NIEZNANY') or 'NIEZNANY').upper()
     if country_code == "PL":
         if "CZYNNY" in status_vat:
             credibility_score = 20
-            justifications.append(f"Podatnik figuruje jako czynnik platnik VAT na bialej liscie")
+            justifications.append(t("scorer.cred_pl_good"))
         else:
             credibility_score = 0
-            justifications.append(f"Podatnik nie figuruje jako czynnik platnik VAT na bialej liscie (status: {status_vat})")
+            justifications.append(t("scorer.cred_pl_bad", status=status_vat))
     else:
         credibility_score = 20
-        justifications.append(f"Brak mozliwosci weryfikacji statusu VAT dla kraju {country_code}.")
-    
-    
+        justifications.append(t("scorer.cred_eu_unknown", country=country_code))
+
     legal_status = (getattr(data, 'status_prawny', 'NIEZNANY') or 'NIEZNANY' ).upper()
     on_whitelist = getattr(data, 'rachunek_na_bialej_liscie', False)
     
@@ -79,30 +79,29 @@ async def enrich(data: ContractorData) -> ContractorData:
         if on_whitelist: reg_score += 5
         
         if reg_score < 15:
-            justifications.append(f"Status formalno-prawny w Polsce nie jest w pelni poprawny (status: {legal_status}, VAT: {status_vat}, Biala lista: {on_whitelist})")
+            justifications.append(t("scorer.reg_pl_bad", legal=legal_status, vat=status_vat, whitelist=on_whitelist))
         else:
-            justifications.append(f"Firma w pelni aktywna, zarejestrowana jako platnik VAT , czynny na bialej liscie bankow.")
+            justifications.append(t("scorer.reg_pl_good"))
             
     else:
         if "CZYNNY" in status_vat or legal_status == "AKTYWNA":
             reg_score = 15
-            justifications.append(f"Podmiot pomyslnie zweryfikowany w europejskiej bazie VIES ")
+            justifications.append(t("scorer.reg_eu_good"))
         else:
             reg_score = 5
-            justifications.append(f"Podmiot nie jest zarejestrowany jako platnik VAT w europejskiej bazie VIES (status: {legal_status}, VAT: {status_vat})")
+            justifications.append(t("scorer.reg_eu_bad", legal=legal_status, vat=status_vat))
     
     
     categories_results.append(CategoryScore(
-        category_name="Status formalno-prawny", score = reg_score, max_score = 15,
-        status = "POZYTYWNY" if reg_score == 15 else "OSTRZEŻENIE"
+        category_name=t("scorer.cat_reg"), score=reg_score, max_score=15,
+        status=t("scorer.status_pos") if reg_score == 15 else t("scorer.status_warn")
     ))
     
     # Kapital firmy
-    
     if country_code != "PL":
         cap_score = 10
         bailiff_score = 25
-        justifications.append(f"Szczegolowa struktura kapitalowa oraz egzekucyjna dla kraju {country_code} wymaga komercyjnych raportow miedzynarodowych.")
+        justifications.append(t("scorer.cap_eu", country=country_code))
     else:
         share_capital = getattr(data, 'share_capital', None)
         cap_score = 10 if (share_capital and share_capital >= 50000) else 5
@@ -110,46 +109,45 @@ async def enrich(data: ContractorData) -> ContractorData:
         has_bailiff = getattr(data, 'has_bailiff_proceedings', None)
         if has_bailiff is True:
             bailiff_score = 0
-            bailiff_status = "NEGATYWNY"
-            justifications.append("Wykryto oficjalne wpisy o egzekucjach komorniczych.")
+            bailiff_status = t("scorer.status_neg")
+            justifications.append(t("scorer.bailiff_yes"))
         elif has_bailiff is False:
             bailiff_score = 25
-            bailiff_status = "POZYTYWNY"
-            justifications.append("Brak wpisow o egzekucjach komorniczych.")
-    
+            bailiff_status = t("scorer.status_pos")
+            justifications.append(t("scorer.bailiff_no"))
     
     categories_results.append(CategoryScore(
-        category_name="Kapital zakladowy", score = cap_score, max_score = 10,
-        status = "POZYTYWNY" if cap_score == 10 else "OSTRZEŻENIE"
+        category_name=t("scorer.cat_cap"), score=cap_score, max_score=10,
+        status=t("scorer.status_pos") if cap_score == 10 else t("scorer.status_warn")
     ))
     
     categories_results.append(CategoryScore(
-        category_name="Postepowania komornicze", score = bailiff_score, max_score = 25,
-        status = bailiff_status if country_code == "PL" else "NIEZNANY"
+        category_name=t("scorer.cat_bailiff"), score=bailiff_score, max_score=25,
+        status=bailiff_status if country_code == "PL" else t("scorer.status_unk")
     ))
     
     has_sanctions = getattr(data, 'on_sanctions_list', None)
     if has_sanctions is True:
         sanctions_score = 0
-        justifications.append("Podmiot figuruje na oficjalnej liscie sankcji.")
+        justifications.append(t("scorer.sanctions_yes"))
     else:
         sanctions_score = 20
-        justifications.append("Brak wpisow o sankcjach na oficjalnych listach.")
+        justifications.append(t("scorer.sanctions_no"))
     
     total_score = age_score + reg_score + cap_score + bailiff_score + credibility_score + sanctions_score
     
     if has_bailiff is True:
         bailiff_score = -20
-        risk_level = "KRYTYCZNE (Egzekucja komornicza)"
+        risk_level = t("scorer.risk_critical")
         color_code = "red"
-    elif total_score >=66:
-        risk_level = "Zagrozenie niskie (Zaufany kontrahent)"
+    elif total_score >= 66:
+        risk_level = t("scorer.risk_low")
         color_code = "green"
     elif total_score < 66 and total_score >= 30:
-        risk_level = "Zagrozenie srednie (Zalecana ostroznosc)"
+        risk_level = t("scorer.risk_med")
         color_code = "yellow"
     else:
-        risk_level = "Zagrozenie wysokie"
+        risk_level = t("scorer.risk_high")
         color_code = "red"
         
     scoring_result = ScoringResult(

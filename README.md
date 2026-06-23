@@ -1,3 +1,4 @@
+
 <div align="center">
   <img src="static/vato_white.png" alt="Vato Logo" width="300" />
 </div>
@@ -6,7 +7,7 @@
 
 **Vato** is a robust desktop application designed for logistics analysts to automate and streamline the process of verifying contractor credibility. It seamlessly aggregates real-time data from Polish and European registries, scores contractors using a custom multi-category algorithm, and automatically generates comprehensive PDF/Excel reports.
 
-> 🏆 **Note:** Vato was built entirely from scratch in just **24 hours** during **Hackathon Morski 2026**! 🌊
+>  **Note:** Vato was built entirely from scratch in just **24 hours** during **Hackathon Morski 2026**! 🌊
 
 ---
 
