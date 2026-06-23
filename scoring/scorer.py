@@ -12,6 +12,10 @@ class CategoryScore(BaseModel):
 class ScoringResult(BaseModel):
     total_score: int
     risk_level: str
+    age_score: int
+    reg_score: int
+    cap_score: int
+    bailiff_score: int
     color_code: str
     categories: List[CategoryScore]
     justifications: List[str]
@@ -128,6 +132,10 @@ async def enrich(data: ContractorData) -> ContractorData:
     scoring_result = ScoringResult(
         total_score=total_score,
         risk_level=risk_level,
+        age_score=age_score,
+        reg_score=reg_score,
+        cap_score=cap_score,
+        bailiff_score=bailiff_score,
         color_code=color_code,
         categories=categories_results,
         justifications=justifications
