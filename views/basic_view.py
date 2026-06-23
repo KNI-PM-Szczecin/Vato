@@ -356,8 +356,7 @@ class BasicView(ctk.CTkFrame):
             )
             
             quick_report = t("basic.result_score", total=total_score, recommendation=recommendation)
-            details = "
-".join([f"- {d}" for d in score_data["justifications"]])
+            details = " ".join([f"- {d}" for d in score_data["justifications"]])
             gui_text = t("basic.result_details", method="NIP", nip=nip, report=quick_report, details=details)
 
             def _show_report_result():
