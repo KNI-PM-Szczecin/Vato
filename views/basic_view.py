@@ -157,6 +157,7 @@ class BasicView(ctk.CTkFrame):
         """
         try:
             import datetime
+            company_name = api_test.fetch_company_name(nip)
             company_data = api_test.fetch_company_data(nip)
             result = api_test.evaluate_contractor(company_data)
 
@@ -230,7 +231,7 @@ class BasicView(ctk.CTkFrame):
                 "Uruchamianie algorytmu scoringowego ...",
                 "",
                 "=" * 42,
-                f"Wynik: {nip} -&gt; {risk_label} ({total_score} pkt)",
+                f"Wynik: {company_name} -&gt; {risk_label} ({total_score} pkt)",
                 "=" * 42,
             ]
             terminal_html = "<br>".join(terminal_lines)
@@ -261,15 +262,15 @@ class BasicView(ctk.CTkFrame):
     <div style="padding:24px 28px 20px;">
 
       <!-- WYNIK SCORINGOWY -->
-      <div style="display:flex;align-items:center;padding:18px 22px;background:{bg_color};border-radius:8px;border-left:5px solid {text_color};border:1px solid {border_color};margin-bottom:24px;">
-        <div style="flex:0 0 auto;text-align:center;padding-right:20px;border-right:1px solid {border_color};">
+      <div style="display:flex;align-items:center;padding:18px 22px;background:{bg_color};border-radius:8px;border:1px solid {border_color};margin-bottom:24px;">
+        <div style="flex:0 0 auto;text-align:center;padding-right:20px;border-right:1px solid {border_color};min-width:72px;">
           <p style="margin:0;font-size:38px;font-weight:800;color:{text_color};line-height:1;">{total_score}</p>
           <p style="margin:2px 0 0;font-size:11px;color:#999;letter-spacing:1px;text-transform:uppercase;">/ 40 pkt</p>
         </div>
         <div style="padding-left:20px;">
           <p style="margin:0;font-size:15px;font-weight:700;color:{text_color};">{recommendation}</p>
-          <p style="margin:3px 0 0;font-size:12px;color:#888;">NIP: <strong>{nip}</strong></p>
-          <p style="margin:3px 0 0;font-size:12px;color:#888;">Data raportu: {datetime.date.today().strftime('%d.%m.%Y')}</p>
+          <p style="margin:5px 0 1px;font-size:13px;font-weight:600;color:#444;">{company_name}</p>
+          <p style="margin:0;font-size:11px;color:#999;">NIP: {nip} &nbsp;·&nbsp; {datetime.date.today().strftime('%d.%m.%Y')}</p>
         </div>
       </div>
 

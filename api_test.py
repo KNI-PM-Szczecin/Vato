@@ -1,6 +1,12 @@
 import os
 import json
 import datetime
+import re
+
+try:
+    import httpx as _httpx
+except ImportError:
+    _httpx = None
 
 try:
     from dotenv import load_dotenv
@@ -10,6 +16,45 @@ except ImportError:
 
 CEIDG_API_KEY = os.getenv("CEIDG_API_KEY")
 REGON_API_KEY = os.getenv("REGON_API_KEY")
+
+
+def fetch_company_name(nip: str) -> str:
+    """
+    Fetch company name from:
+    - Biała Lista MF (wl-api.mf.gov.pl) for PL companies
+    - VIES REST API (POST check-vat-number) for EU companies
+      Note: some EU countries (e.g. DE) do not expose names via VIES.
+    Returns '---' on any failure or unavailable data.
+    """
+    if _httpx is None:
+        return "---"
+
+    nip_clean = nip.strip().upper()
+    if nip_clean.startswith("PL"):
+        nip_clean = nip_clean[2:]
+
+    eu_match = re.match(r'^([A-Z]{2})(.+)$', nip_clean)
+
+    try:
+        if eu_match:
+            country, vat_num = eu_match.group(1), eu_match.group(2)
+            url = "https://ec.europa.eu/taxation_customs/vies/rest-api/check-vat-number"
+            resp = _httpx.post(url, json={"countryCode": country, "vatNumber": vat_num}, timeout=8)
+            if resp.status_code == 200:
+                name = resp.json().get("name", "").strip()
+                return name if name and name != "---" else "---"
+        else:
+            check_date = datetime.date.today().isoformat()
+            url = f"https://wl-api.mf.gov.pl/api/search/nip/{nip_clean}?date={check_date}"
+            resp = _httpx.get(url, timeout=8)
+            if resp.status_code == 200:
+                subject = resp.json().get("result", {}).get("subject", {})
+                name = subject.get("name", "").strip()
+                return name if name else "---"
+    except Exception:
+        pass
+
+    return "---"
 
 
 def fetch_company_data(nip: str, bank_account: str = None) -> dict:
