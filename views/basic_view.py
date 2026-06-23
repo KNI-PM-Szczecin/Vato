@@ -39,10 +39,20 @@ class BasicView(ctk.CTkFrame):
         self.nip_input = ctk.CTkEntry(self.search_card, placeholder_text=t("basic.placeholder_nip"), height=32)
         self.nip_input.grid(row=1, column=1, padx=(0, 20), pady=(0, 20), sticky="ew")
 
+        self.buttons_frame = ctk.CTkFrame(self.search_card, fg_color="transparent")
+        self.buttons_frame.grid(row=2, column=0, columnspan=2, padx=20, pady=(0, 20), sticky="ew")
+        self.buttons_frame.grid_columnconfigure(0, weight=1)
+        self.buttons_frame.grid_columnconfigure(1, weight=1)
+
         self.quick_validate_btn = ctk.CTkButton(
-            self.search_card, text=t("basic.quick_validate"), height=35, command=self.execute_quick_validation
+            self.buttons_frame, text=t("basic.quick_validate"), height=35, command=self.execute_quick_validation
         )
-        self.quick_validate_btn.grid(row=2, column=0, columnspan=2, padx=20, pady=(0, 20), sticky="ew")
+        self.quick_validate_btn.grid(row=0, column=0, padx=(0, 5), sticky="ew")
+
+        self.pdf_report_btn = ctk.CTkButton(
+            self.buttons_frame, text=t("basic.pdf_report"), height=35, command=self.execute_pdf_report
+        )
+        self.pdf_report_btn.grid(row=0, column=1, padx=(5, 0), sticky="ew")
 
         # --- Card 2: Reporting ---
         self.report_card = ctk.CTkFrame(self, corner_radius=10)
@@ -71,8 +81,15 @@ class BasicView(ctk.CTkFrame):
         self.result_card.grid_columnconfigure(0, weight=1)
         self.result_card.grid_rowconfigure(1, weight=1)
 
-        self.result_title = ctk.CTkLabel(self.result_card, text=t("basic.results_title"), font=ctk.CTkFont(size=16, weight="bold"))
-        self.result_title.grid(row=0, column=0, sticky="w", padx=20, pady=(15, 5))
+        self.result_header_frame = ctk.CTkFrame(self.result_card, fg_color="transparent")
+        self.result_header_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=(15, 5))
+        self.result_header_frame.grid_columnconfigure(0, weight=1)
+
+        self.result_title = ctk.CTkLabel(self.result_header_frame, text=t("basic.results_title"), font=ctk.CTkFont(size=16, weight="bold"))
+        self.result_title.grid(row=0, column=0, sticky="w")
+
+        self.copy_result_btn = ctk.CTkButton(self.result_header_frame, text=t("advanced.copy_btn"), width=80, height=28, command=self.copy_log)
+        self.copy_result_btn.grid(row=0, column=1, sticky="e")
 
         self.result_text = ctk.CTkTextbox(self.result_card, wrap="word", corner_radius=8)
         self.result_text.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
@@ -83,6 +100,7 @@ class BasicView(ctk.CTkFrame):
         self.search_title.configure(text=t("basic.title"))
         self.nip_input.configure(placeholder_text=t("basic.placeholder_nip"))
         self.quick_validate_btn.configure(text=t("basic.quick_validate"))
+        self.pdf_report_btn.configure(text=t("basic.pdf_report"))
         
         self.report_title.configure(text=t("basic.report_title"))
         self.email_input.configure(placeholder_text=t("basic.email_placeholder"))
@@ -90,12 +108,24 @@ class BasicView(ctk.CTkFrame):
         self.generate_report_btn.configure(text=t("basic.generate_report"))
         
         self.result_title.configure(text=t("basic.results_title"))
+        self.copy_result_btn.configure(text=t("advanced.copy_btn"))
 
     def append_result(self, text):
+        import datetime
+        now = datetime.datetime.now().strftime("[%d-%m-%Y %H:%M]")
         self.result_text.configure(state="normal")
-        self.result_text.delete("0.0", "end")
-        self.result_text.insert("0.0", text)
+        # Removing delete so it appends like a log
+        if self.result_text.get("0.0", "end").strip() == t("basic.waiting_for_data"):
+            self.result_text.delete("0.0", "end")
+        self.result_text.insert("end", f"\n{now} {text}")
+        self.result_text.see("end")
         self.result_text.configure(state="disabled")
+
+    def copy_log(self):
+        self.clipboard_clear()
+        log_content = self.result_text.get("0.0", "end-1c")
+        self.clipboard_append(log_content)
+        PopupMessage(t("popup.copied_title"), t("advanced.copied"), status="success")
 
     def execute_quick_validation(self):
         nip = self.nip_input.get().strip()
@@ -106,9 +136,35 @@ class BasicView(ctk.CTkFrame):
             return
             
         self.quick_validate_btn.configure(state="disabled", text=t("basic.processing"))
+        self.pdf_report_btn.configure(state="disabled")
         self.append_result(t("basic.validating", nip=nip))
 
+        from services.history_manager import HistoryManager
+        HistoryManager().add_entry("NIP", nip)
+
         threading.Thread(target=self._async_validate, args=(nip, method), daemon=True).start()
+
+    def execute_pdf_report(self):
+        nip = self.nip_input.get().strip()
+        method = self.method_selector.get()
+        
+        if not nip:
+            PopupMessage(t("popup.error"), t("basic.error_empty", method=method), status="error")
+            return
+            
+        from tkinter import filedialog
+        target_file = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF Files", "*.pdf")], initialfile=f"Raport_{nip}.pdf")
+        if not target_file:
+            return
+
+        self.quick_validate_btn.configure(state="disabled")
+        self.pdf_report_btn.configure(state="disabled", text=t("basic.processing"))
+        self.append_result(t("basic.generating_log", email="PDF"))
+
+        from services.history_manager import HistoryManager
+        HistoryManager().add_entry("NIP", nip)
+
+        threading.Thread(target=self._async_pdf_report, args=(nip, method, target_file), daemon=True).start()
 
     def _async_validate(self, nip, method):
         try:
@@ -149,6 +205,49 @@ class BasicView(ctk.CTkFrame):
             self.after(0, _show_error)
         finally:
             self.after(0, lambda: self.quick_validate_btn.configure(state="normal", text=t("basic.quick_validate")))
+            self.after(0, lambda: self.pdf_report_btn.configure(state="normal"))
+
+    def _async_pdf_report(self, nip, method, target_file):
+        try:
+            import asyncio
+            from models.contractor import ContractorData
+            from scoring.scorer import enrich
+            import datetime
+            from utils.pdf_export import export_results_pdf
+            
+            company_dict = api_test.fetch_company_data(nip)
+            company_name = api_test.fetch_company_name(nip)
+            cdata = ContractorData(
+                nip=company_dict["nip"],
+                legal_name=company_name,
+                status_prawny=company_dict.get("legal_status", "NIEZNANY"),
+                data_rozpoczecia=datetime.date.fromisoformat(company_dict["start_date"]) if company_dict.get("start_date") else None,
+                status_vat=company_dict.get("vat_status", "NIEZNANY"),
+                rachunek_na_bialej_liscie=company_dict.get("account_on_whitelist", False),
+                share_capital=100000,
+                has_bailiff_proceedings=False
+            )
+            
+            cdata = asyncio.run(enrich(cdata))
+            
+            export_results_pdf([cdata], target_file)
+            
+            def _show_success():
+                self.append_result(t("basic.report_sent", email="PDF", text=target_file))
+                self.update_idletasks()
+                PopupMessage(t("popup.success"), "Zapisano raport PDF", status="success")
+
+            self.after(0, _show_success)
+        except Exception as e:
+            captured = str(e)
+            def _show_error():
+                self.append_result(t("basic.critical_error", err=captured))
+                self.update_idletasks()
+                PopupMessage(t("popup.api_error"), t("basic.error_api", err=captured), status="error")
+            self.after(0, _show_error)
+        finally:
+            self.after(0, lambda: self.quick_validate_btn.configure(state="normal", text=t("basic.quick_validate")))
+            self.after(0, lambda: self.pdf_report_btn.configure(state="normal", text=t("basic.pdf_report")))
 
     def get_parsed_emails(self, text):
         import re

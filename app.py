@@ -16,6 +16,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from views.basic_view import BasicView
 from views.advanced_view import AdvancedView
 from views.settings_view import SettingsView
+from views.history_view import HistoryView
 from services.i18n import t, on_language_change
 
 class App(ctk.CTk):
@@ -23,8 +24,8 @@ class App(ctk.CTk):
         super().__init__(className="Vato")
 
         self.title(t("app.title"))
-        self.geometry("900x750")
-        self.minsize(800, 650)
+        self.geometry("1000x900")
+        self.minsize(900, 800)
         
         ctk.set_appearance_mode("System")
         ctk.set_default_color_theme("blue")
@@ -164,12 +165,16 @@ class App(ctk.CTk):
 
         self.main_tabs.add(t("tabs.basic"))
         self.main_tabs.add(t("tabs.advanced"))
+        self.main_tabs.add(t("tabs.history"))
 
         self.basic_view = BasicView(self.main_tabs.tab(t("tabs.basic")))
         self.basic_view.pack(fill="both", expand=True, padx=10, pady=10)
 
         self.advanced_view = AdvancedView(self.main_tabs.tab(t("tabs.advanced")))
         self.advanced_view.pack(fill="both", expand=True, padx=10, pady=10)
+
+        self.history_view = HistoryView(self.main_tabs.tab(t("tabs.history")))
+        self.history_view.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.settings_view = SettingsView(self)
         
@@ -181,11 +186,9 @@ class App(ctk.CTk):
     def update_texts(self):
         self.title(t("app.title"))
         
-        # We must recreate or rename tabs. CTkTabview doesn't support renaming tabs easily.
-        # Actually, renaming tabs in CTkTabview is complex, but we can try to destroy and recreate.
-        # For a hackathon, we might skip tab names updating, but let's try to handle other stuff:
         self.basic_view.update_texts()
         self.advanced_view.update_texts()
+        self.history_view.update_texts()
         self.settings_view.update_texts()
 
     def toggle_speaker(self):

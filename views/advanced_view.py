@@ -94,7 +94,7 @@ class AdvancedView(ctk.CTkFrame):
         self.copy_log_btn = ctk.CTkButton(self.log_header_frame, text=t("advanced.copy_btn"), width=80, height=28, command=self.copy_log)
         self.copy_log_btn.grid(row=0, column=1, sticky="e")
 
-        self.log_text = ctk.CTkTextbox(self.status_card, wrap="word", corner_radius=8)
+        self.log_text = ctk.CTkTextbox(self.status_card, wrap="word", corner_radius=8, height=500)
         self.log_text.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
         self.log_text.insert("0.0", t("advanced.waiting"))
         self.log_text.configure(state="disabled")
@@ -120,8 +120,12 @@ class AdvancedView(ctk.CTkFrame):
         self.copy_log_btn.configure(text=t("advanced.copy_btn"))
 
     def append_log(self, text):
+        import datetime
+        now = datetime.datetime.now().strftime("[%d-%m-%Y %H:%M]")
         self.log_text.configure(state="normal")
-        self.log_text.insert("end", f"\n{text}")
+        if self.log_text.get("0.0", "end").strip() == t("advanced.waiting"):
+            self.log_text.delete("0.0", "end")
+        self.log_text.insert("end", f"\n{now} {text}")
         self.log_text.see("end")
         self.log_text.configure(state="disabled")
 
@@ -162,6 +166,11 @@ class AdvancedView(ctk.CTkFrame):
             self.save_input.insert(0, dest)
             
         self.append_log(t("advanced.starting"))
+        
+        from services.history_manager import HistoryManager
+        import os
+        HistoryManager().add_entry("BATCH", os.path.basename(src))
+        
         threading.Thread(target=self._simulate_processing, args=(dest,), daemon=True).start()
 
     def _simulate_processing(self, dest_path=None):
@@ -296,4 +305,9 @@ class AdvancedView(ctk.CTkFrame):
             self.save_input.insert(0, dest)
 
         self.append_log(t("advanced.sending_to", email=user_email))
+        
+        from services.history_manager import HistoryManager
+        import os
+        HistoryManager().add_entry("BATCH", os.path.basename(src))
+        
         threading.Thread(target=self._simulate_processing, args=(dest,), daemon=True).start()

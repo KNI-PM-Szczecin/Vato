@@ -1,10 +1,12 @@
 {
   "app": {
-    "title": "Vato - Weryfikacja Kontrahentów"
+    "title": "Vato - Weryfikacja Kontrahentów",
+    "tab_history": "Historia"
   },
   "tabs": {
     "basic": "Widok Podstawowy",
-    "advanced": "Weryfikacja Wsadowa"
+    "advanced": "Weryfikacja Wsadowa",
+    "history": "Historia"
   },
   "basic": {
     "title": "Pojedyncza Walidacja",
@@ -29,7 +31,8 @@
     "empty_id": "Proszę wpisać identyfikator przed wygenerowaniem raportu.",
     "generating_log": "Generowanie raportu i wysyłanie na {email}...",
     "report_sent": "Raport pomyślnie wysłany na {email}.\n\n{text}",
-    "email_send_error": "Nie udało się wysłać raportu: {err}"
+    "email_send_error": "Nie udało się wysłać raportu: {err}",
+    "pdf_report": "Wygeneruj raport do PDF"
   },
   "advanced": {
     "title": "Konfiguracja Plików (Walidacja Wsadowa)",
@@ -128,5 +131,15 @@
     "cred_eu_unknown": "Brak możliwości weryfikacji statusu VAT dla kraju {country}.",
     "sanctions_yes": "Podmiot figuruje na oficjalnej liście sankcji.",
     "sanctions_no": "Brak wpisów o sankcjach na oficjalnych listach."
+  },
+  "history": {
+    "title": "Historia operacji",
+    "clear_btn": "Wyczyść historię",
+    "refresh_btn": "Odśwież",
+    "empty": "Brak zapisanej historii.",
+    "type_nip": "Sprawdzenie NIP",
+    "type_batch": "Wsad pliku Excel",
+    "cleared_msg": "Historia została wyczyszczona.",
+    "reuse_btn": "Użyj ponownie"
   }
 }

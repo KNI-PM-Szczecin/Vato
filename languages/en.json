@@ -1,10 +1,12 @@
 {
   "app": {
-    "title": "Vato - Contractor Verification"
+    "title": "Vato - Contractor Verification",
+    "tab_history": "History"
   },
   "tabs": {
     "basic": "Basic View",
-    "advanced": "Batch Verification"
+    "advanced": "Batch Verification",
+    "history": "History"
   },
   "basic": {
     "title": "Single Validation",
@@ -29,7 +31,8 @@
     "empty_id": "Please enter an identifier before generating a report.",
     "generating_log": "Generating report and sending to {email}...",
     "report_sent": "Report successfully sent to {email}.\n\n{text}",
-    "email_send_error": "Failed to send report: {err}"
+    "email_send_error": "Failed to send report: {err}",
+    "pdf_report": "Generate PDF report"
   },
   "advanced": {
     "title": "File Configuration (Batch Validation)",
@@ -128,5 +131,15 @@
     "cred_eu_unknown": "Unable to verify VAT status for country {country}.",
     "sanctions_yes": "Entity appears on the official sanctions list.",
     "sanctions_no": "No records found on official sanctions lists."
+  },
+  "history": {
+    "title": "Operation History",
+    "clear_btn": "Clear History",
+    "refresh_btn": "Refresh",
+    "empty": "No history recorded.",
+    "type_nip": "NIP Check",
+    "type_batch": "Excel Batch",
+    "cleared_msg": "History has been cleared.",
+    "reuse_btn": "Reuse"
   }
 }
