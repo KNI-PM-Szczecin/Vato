@@ -20,10 +20,11 @@ async def enrich(data: ContractorData) -> ContractorData:
     justifications =[]
     categories_results = []
     
+    has_bailiff = False
     age_score = 0
     reg_score = 0
     cap_score = 0
-    bailiff_score = 25
+    bailiff_score = 0
     bailiff_status = "POZYTYWNY"
     
     country_code = (getattr(data, 'country_code', 'PL') or 'PL').upper()    
@@ -93,6 +94,7 @@ async def enrich(data: ContractorData) -> ContractorData:
             bailiff_status = "NEGATYWNY"
             justifications.append("Wykryto oficjalne wpisy o egzekucjach komorniczych.")
         elif has_bailiff is False:
+            bailiff_score = 25
             bailiff_status = "POZYTYWNY"
             justifications.append("Brak wpisow o egzekucjach komorniczych.")
     
@@ -110,16 +112,17 @@ async def enrich(data: ContractorData) -> ContractorData:
     total_score = age_score + reg_score + cap_score + bailiff_score 
     
     if has_bailiff is True:
+        bailiff_score = -20
         risk_level = "KRYTYCZNE (Egzekucja komornicza)"
         color_code = "red"
-    elif total_score >=75:
-        risk_level = "NISKIE (Zaufany kontrahent)"
+    elif total_score >=41:
+        risk_level = "Zagrozenie niskie (Zaufany kontrahent)"
         color_code = "green"
-    elif total_score < 75:
-        risk_level = "SREDNIE (Zalecana ostroznosc)"
+    elif total_score < 40 and total_score >= 20:
+        risk_level = "Zagrozenie srednie (Zalecana ostroznosc)"
         color_code = "yellow"
     else:
-        risk_level = "WYSOKIE (Zagrozenie)"
+        risk_level = "Zagrozenie wysokie"
         color_code = "red"
         
     scoring_result = ScoringResult(
