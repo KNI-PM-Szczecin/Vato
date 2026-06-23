@@ -65,6 +65,17 @@ async def verify_contractor(raw_nip: str, selected_country: str = "PL", bank_acc
         contractor = await web_verifier.enrich_with_web_data(contractor)
     except Exception as e:
         print(f"Błąd weryfikacji cyfrowej: {e}")
+        
+    print(f"\nWyszukiwanie wiadomosci prasowych (Google News) ...")
+    try:
+        from services import news_verifier
+        news_data = await news_verifier.fetch_company_news(contractor.legal_name)
+        contractor = contractor.model_copy(update={
+            "news_found": news_data["news_found"],
+            "news_anomalies": news_data["anomalies"]
+        })
+    except Exception as e:
+        print(f"Błąd wyszukiwania wiadomości prasowych: {e}")
     
     print(f"\nUruchamianie algorytmu scoringowego ...")
     contractor = await scorer.enrich(contractor)
