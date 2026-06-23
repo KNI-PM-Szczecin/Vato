@@ -98,12 +98,12 @@ class App(ctk.CTk):
         self.main_tabs.grid(row=1, column=0, sticky="nsew", padx=30, pady=(0, 30))
 
         self.main_tabs.add("Widok Podstawowy")
-        self.main_tabs.add("Weryfikacja Wsadowa (Excel)")
+        self.main_tabs.add("Weryfikacja Wsadowa")
 
         self.basic_view = BasicView(self.main_tabs.tab("Widok Podstawowy"))
         self.basic_view.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.advanced_view = AdvancedView(self.main_tabs.tab("Weryfikacja Wsadowa (Excel)"))
+        self.advanced_view = AdvancedView(self.main_tabs.tab("Weryfikacja Wsadowa"))
         self.advanced_view.pack(fill="both", expand=True, padx=10, pady=10)
 
     def toggle_theme(self):

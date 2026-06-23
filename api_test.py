@@ -13,15 +13,25 @@ REGON_API_KEY = os.getenv("REGON_API_KEY")
 
 
 def fetch_company_data(nip: str, bank_account: str = None) -> dict:
-    print(f"Pobieranie danych dla NIP: {nip}...")
+    original_nip = nip.strip().upper()
+    working_nip = original_nip
     
+    if working_nip.startswith("PL"):
+        working_nip = working_nip[2:]
+        
+    print(f"Pobieranie danych dla NIP: {original_nip} (właściwy: {working_nip})...")
+    
+    import re
+    is_foreign = bool(re.match(r"^[A-Z]{2}", working_nip)) and not working_nip.isdigit()
+    
+    # Mockowane dane (system opcjonalnie przechodzi na np. VIES dla NIP-ów zagranicznych)
     mocked_data = {
-        "nip": nip,
+        "nip": original_nip,
         "bank_account": bank_account,
         "legal_status": "AKTYWNA",
-        "start_date": (datetime.date.today() - datetime.timedelta(days=3*365)).isoformat(),
+        "start_date": (datetime.date.today() - datetime.timedelta(days=3*365 if not is_foreign else 2*365)).isoformat(),
         "vat_status": "CZYNNY",
-        "account_on_whitelist": True,
+        "account_on_whitelist": not is_foreign, # Zagraniczne nie są na polskiej białej liście
         "address_changes_last_year": 0,
         "board_changes_last_3_months": False,
         "frequent_legal_form_changes": False
