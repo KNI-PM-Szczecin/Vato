@@ -194,6 +194,12 @@ class BasicView(ctk.CTkFrame):
                 self.append_result(full_report)
                 self.update_idletasks()
                 PopupMessage(t("popup.success"), quick_report, status=status_color)
+                
+                app = self.winfo_toplevel()
+                if hasattr(app, 'is_muted') and not getattr(app, 'is_muted', True):
+                    from elevenlabs_integration.tts import play_text
+                    # The full_report does not contain the timestamp (it's added inside append_result)
+                    play_text(full_report)
 
             self.after(0, _show_validate_result)
         except Exception as e:
@@ -232,6 +238,13 @@ class BasicView(ctk.CTkFrame):
             
             export_results_pdf([cdata], target_file)
             
+            score_data = cdata.scoring
+            total = score_data['total_score']
+            recommendation = score_data['risk_level']
+            quick_report = t("basic.result_score", total=total, recommendation=recommendation)
+            details = "\n".join([f"- {d}" for d in score_data["justifications"]])
+            full_report = t("basic.result_details", method=method, nip=nip, report=quick_report, details=details)
+            
             def _show_success():
                 self.append_result(t("basic.report_sent", email="PDF", text=target_file))
                 self.update_idletasks()
@@ -239,7 +252,8 @@ class BasicView(ctk.CTkFrame):
                 app = self.winfo_toplevel()
                 if hasattr(app, 'is_muted') and not getattr(app, 'is_muted', True):
                     from elevenlabs_integration.tts import play_text
-                    play_text(t("app.report_generated"))
+                    # The user wants it to read the full evaluation (logs without dates)
+                    play_text(full_report)
 
             self.after(0, _show_success)
         except Exception as e:

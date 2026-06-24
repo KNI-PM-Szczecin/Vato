@@ -133,7 +133,7 @@ async def enrich(data: ContractorData) -> ContractorData:
             # Brak danych z KRS = neutralna ocena, nie karamy za niedostepnosc rejestru
             bailiff_score = 15
             bailiff_status = t("scorer.status_unk")
-            justifications.append("Brak danych o postępowaniach komorniczych (dane niedostępne z KRS) — przyjęto ocenę neutralną.")
+            justifications.append(t("scorer.bailiff_unknown"))
     
     categories_results.append(CategoryScore(
         category_name=t("scorer.cat_cap"), score=cap_score, max_score=10,
@@ -148,10 +148,10 @@ async def enrich(data: ContractorData) -> ContractorData:
     has_sanctions = getattr(data, 'on_sanctions_list', None)
     if has_sanctions is True:
         sanctions_score = 0
-        justifications.append("Podmiot figuruje na oficjalnej liscie sankcji.")
+        justifications.append(t("scorer.sanctions_yes"))
     else:
         sanctions_score = 15
-        justifications.append("Brak wpisow o sankcjach na oficjalnych listach.")
+        justifications.append(t("scorer.sanctions_no"))
         
     categories_results.append(CategoryScore(
         category_name=t("scorer.cat_sanc"), score=sanctions_score, max_score=15,
@@ -163,69 +163,69 @@ async def enrich(data: ContractorData) -> ContractorData:
     website_url = getattr(data, 'website_url', None)
     
     if website_url:
-        justifications.append(f"Zidentyfikowano oficjalną stronę WWW: {website_url}")
+        justifications.append(t("scorer.web_found", url=website_url))
         
         # 1. SSL Check
         ssl_valid = getattr(data, 'ssl_valid', False)
         if ssl_valid:
             web_score += 2
-            justifications.append("Witryna zabezpieczona poprawnym certyfikatem SSL/TLS (+2 pkt).")
+            justifications.append(t("scorer.web_ssl_yes"))
         else:
-            justifications.append("Witryna nie posiada aktywnego/poprawnego certyfikatu SSL/TLS (0 pkt).")
+            justifications.append(t("scorer.web_ssl_no"))
             
         # 2. Domain Age Check
         domain_age = getattr(data, 'domain_age_days', None)
         if domain_age is not None:
             if domain_age > 730:
                 web_score += 2
-                justifications.append(f"Domena zarejestrowana ponad 2 lata temu ({domain_age} dni temu) (+2 pkt).")
+                justifications.append(t("scorer.web_age_2y", days=domain_age))
             elif domain_age > 180:
                 web_score += 1
-                justifications.append(f"Domena zarejestrowana ponad 6 miesięcy temu ({domain_age} dni temu) (+1 pkt).")
+                justifications.append(t("scorer.web_age_6m", days=domain_age))
             elif domain_age < 90:
-                justifications.append(f"Domena zarejestrowana niedawno ({domain_age} dni temu) (0 pkt).")
+                justifications.append(t("scorer.web_age_short", days=domain_age))
             else:
-                justifications.append(f"Domena zarejestrowana {domain_age} dni temu (0 pkt).")
+                justifications.append(t("scorer.web_age_exact", days=domain_age))
         else:
-            justifications.append("Brak danych o wieku domeny w RDAP (0 pkt).")
+            justifications.append(t("scorer.web_age_no"))
             
         # 3. Activity Check
         days_since_post = getattr(data, 'days_since_last_post', None)
         if days_since_post is not None:
             if days_since_post <= 90:
                 web_score += 2
-                justifications.append(f"Witryna aktywnie prowadzona, ostatnia aktywność {days_since_post} dni temu (+2 pkt).")
+                justifications.append(t("scorer.web_act_90", days=days_since_post))
             elif days_since_post <= 180:
                 web_score += 1
-                justifications.append(f"Umiarkowana aktywność witryny, ostatnia aktualizacja {days_since_post} dni temu (+1 pkt).")
+                justifications.append(t("scorer.web_act_180", days=days_since_post))
             else:
-                justifications.append(f"Witryna nie była aktualizowana od {days_since_post} dni (0 pkt).")
+                justifications.append(t("scorer.web_act_old", days=days_since_post))
         else:
-            justifications.append("Brak aktywnego kanału RSS lub nowych artykułów (0 pkt).")
+            justifications.append(t("scorer.web_act_no"))
             
         # 4. NIP Match Check
         nip_matched = getattr(data, 'website_nip_matched', False)
         if nip_matched:
             web_score += 2
-            justifications.append("Zgodność tożsamości: NIP firmy odnaleziony na jej stronie WWW (+2 pkt).")
+            justifications.append(t("scorer.web_nip_yes"))
         else:
-            justifications.append("NIP firmy nie został odnaleziony bezpośrednio na stronie głównej (0 pkt).")
+            justifications.append(t("scorer.web_nip_no"))
     else:
-        justifications.append("Nie odnaleziono oficjalnej witryny kontrahenta (0 pkt).")
+        justifications.append(t("scorer.web_no"))
         
     # 5. Media Presence Check (Google News)
     news_found = getattr(data, 'news_found', False)
     if news_found:
         web_score += 2
-        justifications.append("Wykryto wzmianki o firmie w mediach (Google News) (+2 pkt).")
+        justifications.append(t("scorer.web_news_yes"))
     else:
-        justifications.append("Brak znaczących wzmianek o firmie w mediach (0 pkt).")
+        justifications.append(t("scorer.web_news_no"))
         
     categories_results.append(CategoryScore(
         category_name=t("scorer.cat_web"), 
         score=web_score, 
         max_score=10,
-        status="POZYTYWNY" if web_score >= 5 else ("OSTRZEŻENIE" if web_score >= 0 else "NEGATYWNY")
+        status=t("scorer.status_pos") if web_score >= 5 else (t("scorer.status_warn") if web_score >= 0 else t("scorer.status_neg"))
     ))
     
     # 6. Reputation & Domain Anomalies Penalties
@@ -233,13 +233,13 @@ async def enrich(data: ContractorData) -> ContractorData:
     suspicious_domain = getattr(data, 'suspicious_domain', False)
     if suspicious_domain:
         domain_penalty = -10
-        justifications.append("OSTRZEŻENIE: Domena korzysta z nie-łacińskich znaków (Wysokie ryzyko phishingu / spoofingu) (-10 pkt).")
+        justifications.append(t("scorer.web_domain_warn"))
         
     news_penalty = 0
     news_anomalies = getattr(data, 'news_anomalies', None) or []
     if news_anomalies:
         news_penalty = -15
-        justifications.append("OSTRZEŻENIE: Wykryto negatywne doniesienia medialne (-15 pkt):")
+        justifications.append(t("scorer.web_news_warn"))
         for article in news_anomalies[:3]:
             justifications.append(f"  * {article.get('title')}")
             

@@ -83,7 +83,8 @@ class SettingsView(ctk.CTkFrame):
         self.voice_selector = ctk.CTkComboBox(
             self.voice_inner_frame, 
             values=[],
-            command=self.change_voice
+            command=self.change_voice,
+            width=300
         )
         self.voice_selector.grid(row=0, column=0, sticky="w")
         
@@ -101,7 +102,48 @@ class SettingsView(ctk.CTkFrame):
         )
         self.test_voice_btn.grid(row=0, column=1, sticky="w", padx=(10, 0))
         
+        # Volume slider
+        app = self.winfo_toplevel()
+        default_vol = app.config_manager.get("tts_volume", 0.33) if hasattr(app, "config_manager") else 0.33
+        
+        self.volume_label = ctk.CTkLabel(self.voice_inner_frame, text=f"{int(default_vol*100)}%")
+        self.volume_label.grid(row=0, column=2, sticky="w", padx=(15, 5))
+        
+        self.volume_slider = ctk.CTkSlider(
+            self.voice_inner_frame, 
+            from_=0, 
+            to=1, 
+            width=100,
+            command=self._on_volume_change
+        )
+        self.volume_slider.set(default_vol)
+        self.volume_slider.grid(row=0, column=3, sticky="w")
+        
+        self._voices_pl = ["Adam", "Antoni", "Domi", "Rachel"]
+        self._voices_en = ["Rachel", "Drew", "Clyde", "Mimi", "Fin"]
         self._update_voice_options(get_language())
+        
+        import threading
+        threading.Thread(target=self._fetch_voices_async, daemon=True).start()
+
+    def _on_volume_change(self, val):
+        self.volume_label.configure(text=f"{int(val*100)}%")
+        app = self.winfo_toplevel()
+        if hasattr(app, "config_manager"):
+            app.config_manager.set("tts_volume", float(val))
+
+    def _fetch_voices_async(self):
+        try:
+            from elevenlabs_integration.tts import get_available_voices
+            from services.i18n import get_language
+            voices = get_available_voices()
+            if voices and voices.get("pl") and voices.get("en"):
+                self._voices_pl = voices["pl"]
+                self._voices_en = voices["en"]
+                # Safe GUI update from thread in customtkinter using after
+                self.after(0, lambda: self._update_voice_options(get_language()))
+        except Exception as e:
+            print(f"Error in background voice fetch: {e}")
 
     def test_voice(self):
         voice = self.voice_selector.get()
@@ -120,8 +162,8 @@ class SettingsView(ctk.CTkFrame):
 
     def _update_voice_options(self, lang):
         voices = {
-            "pl": ["Adam", "Antoni", "Domi", "Rachel"],
-            "en": ["Rachel", "Drew", "Clyde", "Mimi", "Fin"]
+            "pl": self._voices_pl,
+            "en": self._voices_en
         }
         available_voices = voices.get(lang, voices["en"])
         self.voice_selector.configure(values=available_voices)
