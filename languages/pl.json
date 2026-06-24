@@ -57,6 +57,8 @@
     "loaded_source": "Załadowano plik źródłowy: {file}",
     "set_dest": "Ustawiono plik docelowy na: {file}",
     "no_source": "Wybierz plik źródłowy.",
+    "mock_mode": "Tryb testowy (bez API)",
+    "mock_mode_active": "[TRYB TESTOWY] Korzystam z danych mockowych — API wylaczone.",
     "starting": "Rozpoczynanie walidacji wsadowej (działanie w tle)...",
     "source_not_found": "Plik źródłowy nie istnieje.",
     "no_nips": "Nie znaleziono poprawnych numerów NIP w pliku.",

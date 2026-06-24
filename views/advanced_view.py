@@ -1,3 +1,4 @@
+import asyncio
 import customtkinter as ctk
 import re
 from tkinter import filedialog
@@ -65,6 +66,14 @@ class AdvancedView(ctk.CTkFrame):
         self.attach_orig_checkbox = ctk.CTkCheckBox(self.checkbox_frame, text=t("advanced.attach_orig"), variable=self.attach_orig_var, onvalue="on", offvalue="off")
         self.attach_orig_checkbox.grid(row=0, column=1, sticky="w")
 
+        self.mock_mode_var = ctk.StringVar(value="off")
+        self.mock_mode_checkbox = ctk.CTkCheckBox(
+            self.checkbox_frame, text=t("advanced.mock_mode"),
+            variable=self.mock_mode_var, onvalue="on", offvalue="off",
+            text_color=("#E65100", "#FFA040"),
+        )
+        self.mock_mode_checkbox.grid(row=1, column=0, columnspan=2, sticky="w", pady=(8, 0))
+
         self.quick_validate_btn = ctk.CTkButton(
             self.actions_card, text=t("advanced.validate_save"), height=35,
             command=self.execute_quick_validation
@@ -113,6 +122,7 @@ class AdvancedView(ctk.CTkFrame):
         self.email_hint.configure(text=t("advanced.email_hint"))
         self.open_file_checkbox.configure(text=t("advanced.open_file"))
         self.attach_orig_checkbox.configure(text=t("advanced.attach_orig"))
+        self.mock_mode_checkbox.configure(text=t("advanced.mock_mode"))
         self.quick_validate_btn.configure(text=t("advanced.validate_save"))
         self.generate_report_btn.configure(text=t("advanced.validate_save_send"))
         
@@ -166,44 +176,75 @@ class AdvancedView(ctk.CTkFrame):
             self.save_input.insert(0, dest)
             
         self.append_log(t("advanced.starting"))
-        
+        mock = self.mock_mode_var.get() == "on"
+        if mock:
+            self.append_log(t("advanced.mock_mode_active"))
+
         from services.history_manager import HistoryManager
         import os
         HistoryManager().add_entry("BATCH", os.path.basename(src))
-        
-        threading.Thread(target=self._simulate_processing, args=(dest,), daemon=True).start()
 
-    def _simulate_processing(self, dest_path=None):
+        threading.Thread(target=self._simulate_processing, args=(dest, mock), daemon=True).start()
+
+    def _simulate_processing(self, dest_path=None, mock_mode=False):
         import os
         import platform
         import subprocess
         from utils.excel_export import read_nips_from_excel
         import openpyxl
         import shutil
-        
+
         src_path = self.load_input.get().strip()
         if not src_path or not os.path.exists(src_path):
             self.after(0, lambda: PopupMessage(t("popup.error"), t("advanced.source_not_found"), status="error"))
             return
-            
+
         nips = read_nips_from_excel(src_path)
         if not nips:
             self.after(0, lambda: PopupMessage(t("popup.error"), t("advanced.no_nips"), status="error"))
             self.after(0, lambda: self.append_log(t("advanced.no_nips")))
             return
-            
+
         self.after(0, lambda: self.append_log(t("advanced.found_nips", count=len(nips))))
-        
+
+        from services.verification_manager import verify_contractor
+
         results_dict = {}
         for nip in nips:
             try:
-                from services.verification_manager import verify_contractor
-                cdata = asyncio.run(verify_contractor(nip))
+                if mock_mode:
+                    import datetime
+                    from models.contractor import ContractorData
+                    from scoring.scorer import enrich as _enrich
+                    cdata = ContractorData(
+                        nip=nip,
+                        legal_name=f"Firma testowa {nip}",
+                        country_code="PL",
+                        status_prawny="AKTYWNA",
+                        status_vat="Czynny",
+                        rachunek_na_bialej_liscie=True,
+                        share_capital=100000.0,
+                        has_bailiff_proceedings=False,
+                        on_sanctions_list=False,
+                        data_rozpoczecia=datetime.date(2015, 1, 1),
+                    )
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        cdata = loop.run_until_complete(_enrich(cdata))
+                    finally:
+                        loop.close()
+                else:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        cdata = loop.run_until_complete(verify_contractor(nip))
+                    finally:
+                        loop.close()
+
                 score_data = cdata.scoring
-                
                 score = score_data['total_score']
                 rec = score_data['risk_level']
-                    
                 score_text = f"{score}/100 - {rec}"
                 results_dict[nip] = score_text
                 self.after(0, lambda n=nip, s=score_text: self.append_log(t("advanced.checked_nip", nip=n, score=s)))
@@ -309,9 +350,12 @@ class AdvancedView(ctk.CTkFrame):
             self.save_input.insert(0, dest)
 
         self.append_log(t("advanced.sending_to", email=user_email))
-        
+        mock = self.mock_mode_var.get() == "on"
+        if mock:
+            self.append_log(t("advanced.mock_mode_active"))
+
         from services.history_manager import HistoryManager
         import os
         HistoryManager().add_entry("BATCH", os.path.basename(src))
-        
-        threading.Thread(target=self._simulate_processing, args=(dest,), daemon=True).start()
+
+        threading.Thread(target=self._simulate_processing, args=(dest, mock), daemon=True).start()
