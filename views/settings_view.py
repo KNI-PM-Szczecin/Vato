@@ -120,9 +120,10 @@ class SettingsView(ctk.CTkFrame):
         self.volume_slider.set(default_vol)
         self.volume_slider.grid(row=0, column=3, sticky="w")
         
-        self._voices_pl = ["Adam", "Antoni", "Domi", "Rachel"]
-        self._voices_en = ["Rachel", "Drew", "Clyde", "Mimi", "Fin"]
-        self._voices_de = ["Rachel", "Drew", "Clyde", "Mimi", "Fin"]
+        # Language and TTS setup
+        self._voices_pl = []
+        self._voices_en = []
+        self._voices_de = []
         self._update_voice_options(get_language())
         
         import threading
@@ -175,10 +176,12 @@ class SettingsView(ctk.CTkFrame):
         self.voice_selector.configure(values=available_voices)
         
         app = self.winfo_toplevel()
-        default_voice = available_voices[0] if available_voices else "Rachel"
+        default_voice = available_voices[0] if available_voices else ""
         saved_voice = default_voice
-        if hasattr(app, "config_manager"):
+        if hasattr(app, "config_manager") and available_voices:
             saved_voice = app.config_manager.get(f"tts_voice_{lang}", default_voice)
+            if saved_voice not in available_voices:
+                saved_voice = default_voice
         self.voice_selector.set(saved_voice)
 
     def change_voice(self, choice):

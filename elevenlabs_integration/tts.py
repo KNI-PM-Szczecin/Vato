@@ -3,7 +3,17 @@ import threading
 import re
 from dotenv import load_dotenv
 
-load_dotenv()
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+env_path = os.path.join(project_root, 'api', '.env')
+if os.path.exists(env_path):
+    load_dotenv(dotenv_path=env_path)
+else:
+    # Fallback to root .env if api/.env doesn't exist
+    root_env = os.path.join(project_root, '.env')
+    if os.path.exists(root_env):
+        load_dotenv(dotenv_path=root_env)
+    else:
+        load_dotenv()
 
 def play_text(text: str, override_voice: str = None, show_errors: bool = False):
     from services.i18n import get_language
@@ -46,11 +56,14 @@ def play_text(text: str, override_voice: str = None, show_errors: bool = False):
             text = re.sub(pat, repl, text, flags=re.IGNORECASE)
 
     api_key = os.environ.get("ELEVENLABS_API_KEY")
+    if api_key:
+        api_key = api_key.strip()
     
     if not api_key:
         if show_errors:
             from views.popup import PopupMessage
-            PopupMessage("Błąd", "Brak klucza ELEVENLABS_API_KEY w zmiennych środowiskowych.", status="error")
+            from services.i18n import t
+            PopupMessage(t("popup.error"), "Brak klucza ELEVENLABS_API_KEY w zmiennych środowiskowych.", status="error")
         else:
             print("ElevenLabs API Key is missing. Skipping TTS.")
         return
@@ -126,63 +139,40 @@ def play_text(text: str, override_voice: str = None, show_errors: bool = False):
 
 def get_available_voices():
     api_key = os.environ.get("ELEVENLABS_API_KEY")
-    if not api_key:
-        return None
-        
+    if api_key:
+        api_key = api_key.strip()
     try:
         from elevenlabs.client import ElevenLabs
-        client = ElevenLabs(api_key=api_key)
+        client = ElevenLabs(api_key=api_key) if api_key else ElevenLabs()
         res = client.voices.get_all()
         
-        pl_voices = []
-        en_voices = []
-        de_voices = []
+        formatted_voices = []
         
         for v in res.voices:
-            is_pl = False
-            is_en = False
-            is_de = False
+            tag = ""
+            name_check = v.name.lower()
             
-            # Check labels for custom user voices
-            if v.labels:
-                lang = v.labels.get('language', '').lower()
-                accent = v.labels.get('accent', '').lower()
-                
-                if 'pl' in lang or 'polish' in lang or 'pl' in accent or 'polish' in accent:
-                    is_pl = True
-                if 'en' in lang or 'english' in lang or 'american' in accent or 'british' in accent:
-                    is_en = True
-                if 'de' in lang or 'german' in lang or 'de' in accent or 'german' in accent:
-                    is_de = True
-
-            # Standard ElevenLabs voices categorization
-            if any(name in v.name for name in ["Adam", "Antoni", "Domi", "Rachel", "Marek"]):
-                is_pl = True
-                
-            if any(name in v.name for name in ["Bill", "Brian", "Callum", "Charlie", "Eric", "Harry", "Jessica", "Liam", "Matilda", "Roger", "Will", "Drew", "Clyde", "Mimi", "Fin", "Alice", "Bella", "Daniel", "Laura", "Lily", "River", "Sarah", "George", "Chris", "Rachel"]):
-                is_en = True
-                
-            if any(name in v.name for name in ["Markus", "Hans", "Arnold", "Fritz", "Klaus", "Marlene", "Rachel"]):
-                is_de = True
-
-            if is_pl: pl_voices.append(v.name)
-            if is_en: en_voices.append(v.name)
-            if is_de: de_voices.append(v.name)
+            if any(n in name_check for n in ["adam", "antoni", "domi", "marek"]):
+                tag = "[PL]"
+            elif any(n in name_check for n in ["markus", "hans", "arnold", "fritz", "klaus", "marlene"]):
+                tag = "[DE]"
+            elif v.labels and 'language' in v.labels:
+                lang = str(v.labels['language']).upper()
+                if "POLISH" in lang or lang == "PL": tag = "[PL]"
+                elif "GERMAN" in lang or lang == "DE": tag = "[DE]"
+                elif "ENGLISH" in lang or lang == "EN": tag = "[EN]"
+                else: tag = f"[{lang[:2]}]"
+            else:
+                if getattr(v, "category", "") != "premade":
+                    tag = "[CUSTOM]"
+                else:
+                    tag = "[EN]"
+                    
+            formatted_name = f"{tag} {v.name}"
+            formatted_voices.append(formatted_name)
             
-            if not is_pl and not is_en and not is_de:
-                # Fallback for completely unlabeled custom user voices: show in all
-                pl_voices.append(v.name)
-                en_voices.append(v.name)
-                de_voices.append(v.name)
-                
-        if not pl_voices:
-            pl_voices = ["Adam", "Antoni", "Domi", "Rachel"]
-        if not en_voices:
-            en_voices = ["Rachel", "Drew", "Clyde", "Mimi", "Fin"]
-        if not de_voices:
-            de_voices = ["Rachel", "Markus", "Hans", "Arnold", "Mimi"]
-            
-        return {"pl": sorted(list(set(pl_voices))), "en": sorted(list(set(en_voices))), "de": sorted(list(set(de_voices)))}
+        formatted_voices = sorted(list(set(formatted_voices)))
+        return {"pl": formatted_voices, "en": formatted_voices, "de": formatted_voices}
     except Exception as e:
         print(f"Failed to fetch voices from API: {e}")
         return None
