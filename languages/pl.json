@@ -87,6 +87,7 @@
     "score_label": "Ocena Kontrahenta",
     "recommendation": "Rekomendacja: {recommendation}",
     "details_title": "Szczegóły oceny",
+    "analysis_title": "Uzasadnienie wyniku (Analiza ryzyka)",
     "footer": "Wiadomość wygenerowana automatycznie przez aplikację Vato."
   },
   "popup": {

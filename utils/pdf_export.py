@@ -155,24 +155,43 @@ def export_results_pdf(results, path: str) -> None:
         
         # 3. Gather Scoring Data
         if has_scoring_dict:
-            score = f"{contractor.scoring.get('total_score', 0)} / 100"
+            total_score_val = contractor.scoring.get('total_score', 0)
+            score = f"{total_score_val} / 100"
             risk = contractor.scoring.get('risk_level', 'NIEZNANE')
+            color_code = contractor.scoring.get('color_code', 'yellow')
             justifications = contractor.scoring.get('justifications', [])
         elif hasattr(contractor, 'total'):
-            score = f"{contractor.total} / 40"
+            total_score_val = contractor.total
+            score = f"{total_score_val} / 40"
             risk = getattr(contractor, 'risk_level', None)
             risk = risk.value if risk else 'NIEZNANE'
+            color_code = 'yellow'
             justifications = getattr(contractor, 'details', [])
         else:
+            total_score_val = 0
             score = "BRAK KONCOWEGO WYNIKU"
             risk = "NIEZNANE"
+            color_code = 'yellow'
             justifications = []
-            
+
+        if color_code == 'green':
+            score_bg = colors.HexColor("#E6F4EA")
+            score_fg = colors.HexColor("#1E7E34")
+        elif color_code == 'red':
+            score_bg = colors.HexColor("#FDECEA")
+            score_fg = colors.HexColor("#C62828")
+        else:
+            score_bg = colors.HexColor("#FFF3E0")
+            score_fg = colors.HexColor("#E65100")
+
+        score_style = ParagraphStyle('ScoreCell', parent=bold_body_style, textColor=score_fg, fontSize=10)
+        header_cell_style = ParagraphStyle('HeaderCell', parent=bold_body_style, textColor=colors.white, fontSize=9)
+
         # Table of details
         data_table = [
             [
-                P("<b>Dane rejestrowe (KRS/CEIDG)</b>", bold_body_style), "",
-                P("<b>Wiarygodnosc Cyfrowa (WWW/SSL)</b>", bold_body_style), ""
+                P("<b>Dane rejestrowe (KRS/CEIDG)</b>", header_cell_style), "",
+                P("<b>Wiarygodnosc Cyfrowa (WWW/SSL)</b>", header_cell_style), ""
             ],
             [
                 P("Status prawny:", body_style), P(status_prawny, body_style),
@@ -195,24 +214,26 @@ def export_results_pdf(results, path: str) -> None:
                 P("Zgodnosc NIP na stronie:", body_style), P(nip_match, body_style)
             ],
             [
-                P("<b>Wynik Scoringu:</b>", bold_body_style), P(f"<b>{score} pkt</b>", bold_body_style),
-                P("<b>Rekomendacja ryzyka:</b>", bold_body_style), P(f"<b>{risk}</b>", bold_body_style)
+                P("<b>Wynik Scoringu:</b>", score_style), P(f"<b>{score} pkt</b>", score_style),
+                P("<b>Rekomendacja ryzyka:</b>", score_style), P(f"<b>{risk}</b>", score_style)
             ]
         ]
-        
+
         # Table styling
         t = Table(data_table, colWidths=[120, 140, 120, 140])
         t.setStyle(TableStyle([
             ('SPAN', (0, 0), (1, 0)),
             ('SPAN', (2, 0), (3, 0)),
-            ('BACKGROUND', (0, 0), (3, 0), BG_LIGHT),
-            ('BACKGROUND', (0, 6), (3, 6), BG_LIGHT),
+            ('BACKGROUND', (0, 0), (3, 0), PRIMARY_COLOR),
+            ('BACKGROUND', (0, 6), (3, 6), score_bg),
             ('LINEBELOW', (0, 0), (3, 0), 1, SECONDARY_COLOR),
-            ('LINEABOVE', (0, 6), (3, 6), 1, SECONDARY_COLOR),
+            ('LINEABOVE', (0, 6), (3, 6), 2, score_fg),
+            ('ROWBACKGROUNDS', (0, 1), (3, 5), [colors.white, BG_LIGHT]),
             ('INNERGRID', (0, 0), (3, 6), 0.5, BORDER_COLOR),
             ('BOX', (0, 0), (3, 6), 1, PRIMARY_COLOR),
-            ('TOPPADDING', (0, 0), (3, 6), 5),
-            ('BOTTOMPADDING', (0, 0), (3, 6), 5),
+            ('TOPPADDING', (0, 0), (3, 6), 6),
+            ('BOTTOMPADDING', (0, 0), (3, 6), 6),
+            ('LEFTPADDING', (0, 0), (3, 6), 8),
             ('VALIGN', (0, 0), (3, 6), 'MIDDLE'),
         ]))
         

@@ -352,8 +352,15 @@ class BasicView(ctk.CTkFrame):
                 )
 
             details_items = ""
-            for detail in score_data["justifications"]:
-                details_items += f'<li style="padding:10px 12px;border-bottom:1px solid #f0f2f5;font-size:14px;line-height:1.5;">{detail}</li>'
+            for i, detail in enumerate(score_data["justifications"]):
+                row_bg = "#f9fafc" if i % 2 == 0 else "#ffffff"
+                details_items += (
+                    f'<tr style="background:{row_bg};">'
+                    f'<td style="padding:9px 14px;border-bottom:1px solid #eef0f4;width:22px;text-align:center;vertical-align:top;">'
+                    f'<span style="color:#2B6CB0;font-size:14px;line-height:1.6;">&#9656;</span></td>'
+                    f'<td style="padding:9px 14px 9px 6px;border-bottom:1px solid #eef0f4;font-size:13px;color:#2D3748;line-height:1.55;">{detail}</td>'
+                    f'</tr>'
+                )
 
             logo_img = (
                 f'<img src="data:image/png;base64,{_LOGO_B64}" alt="Vato" '
@@ -405,9 +412,15 @@ class BasicView(ctk.CTkFrame):
         <tbody>{results_rows_html}</tbody>
       </table>
 
-      <ul style="list-style:none;padding:0;margin:0 0 25px 0;">
-        {details_items}
-      </ul>
+      <p style="font-size:11px;font-weight:700;color:#1e3c72;text-transform:uppercase;letter-spacing:1.2px;border-bottom:2px solid #e8eaf0;padding-bottom:7px;margin:0 0 10px;">{t("email.analysis_title")}</p>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e8eaf0;margin-bottom:20px;">
+        <thead>
+          <tr style="background:#2B6CB0;color:#fff;">
+            <th colspan="2" style="padding:9px 14px;text-align:left;font-size:12px;font-weight:600;">Szczegolowa analiza czynnikow ryzyka</th>
+          </tr>
+        </thead>
+        <tbody>{details_items}</tbody>
+      </table>
 
     </div>
 
