@@ -29,21 +29,21 @@ jobs:
       - name: Inject Secrets to Python
         shell: bash
         run: |
-          cat << 'EOF' > env_vars.py
-          import os
-          os.environ["CEIDG_API_KEY"] = "${{ secrets.CEIDG_API_KEY }}"
-          os.environ["REGON_API_KEY"] = "${{ secrets.REGON_API_KEY }}"
-          os.environ["ELEVENLABS_API_KEY"] = "${{ secrets.ELEVENLABS_API_KEY }}"
-          os.environ["SMTP_HOST"] = "${{ secrets.SMTP_HOST }}"
-          os.environ["SMTP_PORT"] = "${{ secrets.SMTP_PORT }}"
-          os.environ["SMTP_USER"] = "${{ secrets.SMTP_USER }}"
-          os.environ["SMTP_PASSWORD"] = "${{ secrets.SMTP_PASSWORD }}"
-          os.environ["SMTP_FROM"] = "${{ secrets.SMTP_FROM }}"
-          EOF
+          cat > env_vars.py << 'EOF'
+import os
+os.environ["CEIDG_API_KEY"] = "${{ secrets.CEIDG_API_KEY }}"
+os.environ["REGON_API_KEY"] = "${{ secrets.REGON_API_KEY }}"
+os.environ["ELEVENLABS_API_KEY"] = "${{ secrets.ELEVENLABS_API_KEY }}"
+os.environ["SMTP_HOST"] = "${{ secrets.SMTP_HOST }}"
+os.environ["SMTP_PORT"] = "${{ secrets.SMTP_PORT }}"
+os.environ["SMTP_USER"] = "${{ secrets.SMTP_USER }}"
+os.environ["SMTP_PASSWORD"] = "${{ secrets.SMTP_PASSWORD }}"
+os.environ["SMTP_FROM"] = "${{ secrets.SMTP_FROM }}"
+EOF
 
       - name: Build application
         run: |
-          pyinstaller --noconfirm --onefile --windowed --name Vato --icon=static/vato_v_white.ico --add-data "languages;languages/" --add-data "static;static/" --collect-all customtkinter main.py
+          pyinstaller --noconfirm --onefile --windowed --name Vato --icon=static/vato_v_white.ico --add-data "languages;languages/" --add-data "static;static/" --collect-all customtkinter --runtime-hook env_vars.py main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
