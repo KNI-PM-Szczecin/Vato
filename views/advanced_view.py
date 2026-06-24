@@ -178,7 +178,6 @@ class AdvancedView(ctk.CTkFrame):
         import platform
         import subprocess
         from utils.excel_export import read_nips_from_excel
-        import api_test
         import openpyxl
         import shutil
         

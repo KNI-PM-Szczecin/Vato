@@ -4,7 +4,6 @@ import customtkinter as ctk
 import re
 import datetime
 from views.popup import PopupMessage
-import api_test
 from services.email_service import EmailService
 import threading
 from services.i18n import t
@@ -216,28 +215,13 @@ class BasicView(ctk.CTkFrame):
     def _async_pdf_report(self, nip, method, target_file):
         try:
             import asyncio
-            from models.contractor import ContractorData
-            from scoring.scorer import enrich
-            import datetime
+            from services.verification_manager import verify_contractor
             from utils.pdf_export import export_results_pdf
-            
-            company_dict = api_test.fetch_company_data(nip)
-            company_name = api_test.fetch_company_name(nip)
-            cdata = ContractorData(
-                nip=company_dict["nip"],
-                legal_name=company_name,
-                status_prawny=company_dict.get("legal_status", "NIEZNANY"),
-                data_rozpoczecia=datetime.date.fromisoformat(company_dict["start_date"]) if company_dict.get("start_date") else None,
-                status_vat=company_dict.get("vat_status", "NIEZNANY"),
-                rachunek_na_bialej_liscie=company_dict.get("account_on_whitelist", False),
-                share_capital=100000,
-                has_bailiff_proceedings=False
-            )
-            
-            cdata = asyncio.run(enrich(cdata))
-            
+
+            cdata = asyncio.run(verify_contractor(nip))
+
             export_results_pdf([cdata], target_file)
-            
+
             score_data = cdata.scoring
             total = score_data['total_score']
             recommendation = score_data['risk_level']
