@@ -33,7 +33,8 @@
     "generating_log": "Generowanie raportu i wysyłanie na {email}...",
     "report_sent": "Raport pomyślnie wysłany na {email}.\n\n{text}",
     "email_send_error": "Nie udało się wysłać raportu: {err}",
-    "pdf_report": "Wygeneruj raport do PDF"
+    "pdf_report": "Wygeneruj raport do PDF",
+    "pdf_saved": "Zapisano raport PDF"
   },
   "advanced": {
     "title": "Konfiguracja Plików (Walidacja Wsadowa)",
@@ -81,7 +82,9 @@
     "language": "Język aplikacji",
     "invalid_color": "Niepoprawny format koloru. Użyj HEX, np. #3B8ED0",
     "tts_voice": "Głos lektora (ElevenLabs)",
-    "tts_test": "Jestem modelem mowy {name}"
+    "tts_test": "Jestem modelem mowy {name}",
+    "no_api_key": "Brak klucza ELEVENLABS_API_KEY w zmiennych środowiskowych.",
+    "invalid_api_key": "Nieprawidłowy klucz API (Invalid API key)."
   },
   "email": {
     "subject": "Raport weryfikacji KYC - {nip}",

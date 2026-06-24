@@ -248,7 +248,7 @@ class BasicView(ctk.CTkFrame):
             def _show_success():
                 self.append_result(t("basic.report_sent", email="PDF", text=target_file))
                 self.update_idletasks()
-                PopupMessage(t("popup.success"), "Zapisano raport PDF", status="success")
+                PopupMessage(t("popup.success"), t("basic.pdf_saved"), status="success")
                 app = self.winfo_toplevel()
                 if hasattr(app, 'is_muted') and not getattr(app, 'is_muted', True):
                     from elevenlabs_integration.tts import play_text

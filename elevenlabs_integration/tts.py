@@ -68,14 +68,15 @@ def play_text(text: str, override_voice: str = None, show_errors: bool = False):
         except Exception as e:
             if show_errors:
                 from views.popup import PopupMessage
+                from services.i18n import t
                 
                 err_msg = str(e)
                 if "invalid_api_key" in err_msg:
-                    err_msg = "Nieprawidłowy klucz API (Invalid API key)."
+                    err_msg = t("settings.invalid_api_key")
                     
                 print(f"TTS Error: {e}")
                 try:
-                    PopupMessage("Błąd", f"Błąd ElevenLabs: {err_msg}", status="error")
+                    PopupMessage(t("popup.error"), f"ElevenLabs: {err_msg}", status="error")
                 except:
                     pass
             else:

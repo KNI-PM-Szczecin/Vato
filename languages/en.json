@@ -33,7 +33,8 @@
     "generating_log": "Generating report and sending to {email}...",
     "report_sent": "Report successfully sent to {email}.\n\n{text}",
     "email_send_error": "Failed to send report: {err}",
-    "pdf_report": "Generate PDF report"
+    "pdf_report": "Generate PDF report",
+    "pdf_saved": "PDF report saved"
   },
   "advanced": {
     "title": "File Configuration (Batch Validation)",
@@ -81,7 +82,9 @@
     "language": "App Language",
     "invalid_color": "Invalid color format. Use HEX, e.g. #3B8ED0",
     "tts_voice": "TTS Voice (ElevenLabs)",
-    "tts_test": "I am the speech model {name}"
+    "tts_test": "I am the speech model {name}",
+    "no_api_key": "Missing ELEVENLABS_API_KEY in environment variables.",
+    "invalid_api_key": "Invalid API key (Invalid API key)."
   },
   "email": {
     "subject": "KYC Verification Report - {nip}",

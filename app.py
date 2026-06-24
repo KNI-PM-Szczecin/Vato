@@ -174,14 +174,18 @@ class App(ctk.CTk):
         self.main_tabs.add(t("tabs.basic"))
         self.main_tabs.add(t("tabs.advanced"))
         self.main_tabs.add(t("tabs.history"))
+        
+        self._tab_name_basic = t("tabs.basic")
+        self._tab_name_advanced = t("tabs.advanced")
+        self._tab_name_history = t("tabs.history")
 
-        self.basic_view = BasicView(self.main_tabs.tab(t("tabs.basic")))
+        self.basic_view = BasicView(self.main_tabs.tab(self._tab_name_basic))
         self.basic_view.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.advanced_view = AdvancedView(self.main_tabs.tab(t("tabs.advanced")))
+        self.advanced_view = AdvancedView(self.main_tabs.tab(self._tab_name_advanced))
         self.advanced_view.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.history_view = HistoryView(self.main_tabs.tab(t("tabs.history")))
+        self.history_view = HistoryView(self.main_tabs.tab(self._tab_name_history))
         self.history_view.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.settings_view = SettingsView(self)
@@ -193,6 +197,22 @@ class App(ctk.CTk):
 
     def update_texts(self):
         self.title(t("app.title"))
+        
+        new_basic = t("tabs.basic")
+        new_advanced = t("tabs.advanced")
+        new_history = t("tabs.history")
+        
+        if new_basic != self._tab_name_basic:
+            self.main_tabs.rename(self._tab_name_basic, new_basic)
+            self._tab_name_basic = new_basic
+            
+        if new_advanced != self._tab_name_advanced:
+            self.main_tabs.rename(self._tab_name_advanced, new_advanced)
+            self._tab_name_advanced = new_advanced
+            
+        if new_history != self._tab_name_history:
+            self.main_tabs.rename(self._tab_name_history, new_history)
+            self._tab_name_history = new_history
         
         self.basic_view.update_texts()
         self.advanced_view.update_texts()
