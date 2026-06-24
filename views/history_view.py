@@ -79,7 +79,9 @@ class HistoryView(ctk.CTkFrame):
             time_lbl = ctk.CTkLabel(card, text=timestamp, font=ctk.CTkFont(size=12, weight="bold"), text_color=("gray30", "gray70"))
             time_lbl.grid(row=0, column=0, padx=15, pady=10, sticky="w")
             
-            val_lbl = ctk.CTkLabel(card, text=f"{type_str}: {value}", font=ctk.CTkFont(size=14))
+            import os
+            display_value = os.path.basename(value) if etype == "BATCH" else value
+            val_lbl = ctk.CTkLabel(card, text=f"{type_str}: {display_value}", font=ctk.CTkFont(size=14))
             val_lbl.grid(row=0, column=1, padx=15, pady=10, sticky="w")
             
             reuse_btn = ctk.CTkButton(card, text=t("history.reuse_btn"), width=80, height=28, command=lambda e=etype, v=value: self.reuse_entry(e, v))

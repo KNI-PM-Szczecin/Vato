@@ -169,7 +169,7 @@ class AdvancedView(ctk.CTkFrame):
         
         from services.history_manager import HistoryManager
         import os
-        HistoryManager().add_entry("BATCH", os.path.basename(src))
+        HistoryManager().add_entry("BATCH", src)
         
         threading.Thread(target=self._simulate_processing, args=(dest,), daemon=True).start()
 
@@ -177,6 +177,7 @@ class AdvancedView(ctk.CTkFrame):
         import os
         import platform
         import subprocess
+        import asyncio
         from utils.excel_export import read_nips_from_excel
         import api_test
         import openpyxl

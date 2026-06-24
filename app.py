@@ -168,7 +168,7 @@ class App(ctk.CTk):
         self.settings_btn.grid(row=0, column=2, padx=(5, 0))
 
         # Tabview
-        self.main_tabs = ctk.CTkTabview(self, corner_radius=10)
+        self.main_tabs = ctk.CTkTabview(self, corner_radius=10, command=self.on_tab_change)
         self.main_tabs.grid(row=1, column=0, sticky="nsew", padx=30, pady=(0, 30))
 
         self.main_tabs.add(t("tabs.basic"))
@@ -194,6 +194,11 @@ class App(ctk.CTk):
         self.apply_accent_color(self.accent_color)
         
         on_language_change(self.update_texts)
+
+    def on_tab_change(self):
+        current_tab = self.main_tabs.get()
+        if current_tab == self._tab_name_history:
+            self.history_view.load_history()
 
     def update_texts(self):
         self.title(t("app.title"))
