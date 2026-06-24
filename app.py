@@ -190,7 +190,7 @@ class App(ctk.CTk):
         
         self.settings_view = SettingsView(self)
         
-        # Aplikuj domyślny kolor akcentu na start
+        # Apply default accent color on startup
         self.apply_accent_color(self.accent_color)
         
         on_language_change(self.update_texts)

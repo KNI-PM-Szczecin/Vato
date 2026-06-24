@@ -64,19 +64,19 @@ def fetch_company_data(nip: str, bank_account: str = None) -> dict:
     if working_nip.startswith("PL"):
         working_nip = working_nip[2:]
         
-    print(f"Pobieranie danych dla NIP: {original_nip} (właściwy: {working_nip})...")
+    print(f"Fetching data for NIP: {original_nip} (actual: {working_nip})...")
     
     import re
     is_foreign = bool(re.match(r"^[A-Z]{2}", working_nip)) and not working_nip.isdigit()
     
-    # Mockowane dane (system opcjonalnie przechodzi na np. VIES dla NIP-ów zagranicznych)
+    # Mocked data (system optionally falls back to e.g. VIES for foreign VAT numbers)
     mocked_data = {
         "nip": original_nip,
         "bank_account": bank_account,
         "legal_status": "AKTYWNA",
         "start_date": (datetime.date.today() - datetime.timedelta(days=3*365 if not is_foreign else 2*365)).isoformat(),
         "vat_status": "CZYNNY",
-        "account_on_whitelist": not is_foreign, # Zagraniczne nie są na polskiej białej liście
+        "account_on_whitelist": not is_foreign, # Foreign entities are not on the Polish whitelist
         "address_changes_last_year": 0,
         "board_changes_last_3_months": False,
         "frequent_legal_form_changes": False

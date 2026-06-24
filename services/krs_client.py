@@ -56,7 +56,7 @@ async def fetch_krs_data(nip: str, krs_numer: str | None = None) -> dict:
         kapital_info = dzial1.get("kapital", {}).get("wysokoscKapitaluZakladowego", {})
         share_capital = kapital_info.get("wartosc")
         if share_capital is not None:
-            # KRS zwraca liczby z przecinkiem jako separatorem dziesiętnym (np. "125000,00")
+            # KRS returns numbers with a comma as the decimal separator (e.g. "125000,00")
             share_capital = float(str(share_capital).replace(",", "."))
 
         dzial4 = odpis_dane.get("dzial4", {})

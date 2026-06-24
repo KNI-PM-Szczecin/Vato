@@ -38,7 +38,7 @@ async def enrich(data: ContractorData) -> ContractorData:
     
     country_code = (getattr(data, 'country_code', 'PL') or 'PL').upper()    
     
-    # Doswiadczenie w biznesie (Experience in business)
+    # Evaluate business experience
     data_rozpoczecia = getattr(data, 'data_rozpoczecia', None)
     if data_rozpoczecia and isinstance(data.data_rozpoczecia, date):
         years_in_business = date.today().year - data.data_rozpoczecia.year
@@ -49,7 +49,7 @@ async def enrich(data: ContractorData) -> ContractorData:
             age_score = 5
             justifications.append(t("scorer.age_eu", country=country_code))
         else:
-            # Brak danych o dacie rejestracji (np. brak dostepu do KRS) = wynik neutralny
+            # Missing registration date (e.g. no KRS access) results in a neutral score
             age_score = 5
             justifications.append(t("scorer.age_unknown"))
             
@@ -98,7 +98,7 @@ async def enrich(data: ContractorData) -> ContractorData:
             reg_score = 15
             justifications.append(t("scorer.reg_eu_good"))
         else:
-            # Nieznaleziony w VIES — wynik neutralny, nie karamy za limit API
+            # Not found in VIES — neutral score, we do not penalize for API limits
             credibility_score = 5
             reg_score = 2
             justifications.append(t("scorer.reg_eu_bad", legal=legal_status, vat=status_vat))
@@ -116,15 +116,15 @@ async def enrich(data: ContractorData) -> ContractorData:
     
     # Kapital firmy
     if country_code != "PL":
-        # Neutralne wartości — brak dostępu do zagranicznych rejestrów
-        # Jeśli VIES potwierdził → lekko wyższe, jeśli nie → ostrożniejsze
+        # Neutral values — no access to foreign registries
+        # If VIES confirmed -> slightly higher score, else -> more cautious
         cap_score = 7 if not vies_confirmed else 10
         bailiff_score = 15 if not vies_confirmed else 20
         justifications.append(t("scorer.cap_eu", country=country_code))
     else:
         share_capital = getattr(data, 'share_capital', None)
         if share_capital is None:
-            # Brak danych o kapitale (np. brak KRS) = wynik neutralny
+            # Missing capital data (e.g. no KRS access) results in a neutral score
             cap_score = 7
         else:
             cap_score = 10 if share_capital >= 50000 else 5
@@ -139,7 +139,7 @@ async def enrich(data: ContractorData) -> ContractorData:
             bailiff_status = t("scorer.status_pos")
             justifications.append(t("scorer.bailiff_no"))
         else:
-            # Brak danych z KRS = neutralna ocena, nie karamy za niedostepnosc rejestru
+            # Missing KRS data results in a neutral score, we do not penalize for registry unavailability
             bailiff_score = 15
             bailiff_status = t("scorer.status_unk")
             justifications.append(t("scorer.bailiff_unknown"))

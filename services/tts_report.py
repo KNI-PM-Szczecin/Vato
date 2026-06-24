@@ -34,13 +34,13 @@ def _build_pl(c) -> str:
     if nip:
         parts.append(f"Numer NIP: {nip}.")
 
-    # ── wynik scoringowy ───────────────────────────────────────────────────────
+    # ── scoring result ─────────────────────────────────────────────────────────
     if total is not None:
         parts.append(f"Wynik oceny ryzyka: {total} punktów na sto możliwych.")
         if risk:
             parts.append(f"Rekomendacja: {risk}.")
 
-    # ── status prawny ──────────────────────────────────────────────────────────
+    # ── legal status ───────────────────────────────────────────────────────────
     status_prawny = (getattr(c, "status_prawny", "") or "").upper()
     data_rozp = getattr(c, "data_rozpoczecia", None)
 
@@ -68,26 +68,26 @@ def _build_pl(c) -> str:
     if whitelist:
         parts.append("Konto bankowe firmy widnieje na Białej Liście Ministerstwa Finansów.")
 
-    # ── kapitał ───────────────────────────────────────────────────────────────
+    # ── share capital ─────────────────────────────────────────────────────────
     cap = getattr(c, "share_capital", None)
     if cap is not None:
         parts.append(f"Kapitał zakładowy wynosi {int(cap):,} złotych.".replace(",", " "))
 
-    # ── komornicy ─────────────────────────────────────────────────────────────
+    # ── bailiff ───────────────────────────────────────────────────────────────
     bailiff = getattr(c, "has_bailiff_proceedings", None)
     if bailiff is True:
         parts.append("Ostrzeżenie: wykryto aktywne postępowania komornicze.")
     elif bailiff is False:
         parts.append("Brak postępowań komorniczych.")
 
-    # ── sankcje ───────────────────────────────────────────────────────────────
+    # ── sanctions ─────────────────────────────────────────────────────────────
     sanctions = getattr(c, "on_sanctions_list", None)
     if sanctions is True:
         parts.append("Uwaga: podmiot figuruje na oficjalnej liście sankcji.")
     else:
         parts.append("Brak wpisów na listach sankcji.")
 
-    # ── strona www ────────────────────────────────────────────────────────────
+    # ── website ───────────────────────────────────────────────────────────────
     website = getattr(c, "website_url", None)
     ssl     = getattr(c, "ssl_valid", None)
     domain_age = getattr(c, "domain_age_days", None)
@@ -104,7 +104,7 @@ def _build_pl(c) -> str:
     else:
         parts.append("Nie odnaleziono oficjalnej strony internetowej firmy.")
 
-    # ── podsumowanie ──────────────────────────────────────────────────────────
+    # ── summary ───────────────────────────────────────────────────────────────
     if color == "green":
         parts.append("Podsumowanie: kontrahent oceniony jako wiarygodny i bezpieczny.")
     elif color == "red":

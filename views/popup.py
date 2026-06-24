@@ -88,9 +88,9 @@ class PopupMessage(ctk.CTkToplevel):
         )
         self.button.pack(side="left")
 
-        # Na Linuxie (X11) grab_set() wywołany przed MapNotify powoduje
-        # że widgety wewnątrz okna nie są rysowane. Opóźnienie 50ms
-        # daje czas na zmapowanie okna przez serwer X przed grab.
+        # On Linux (X11), calling grab_set() before MapNotify causes
+        # the widgets inside the window to not be drawn. A 50ms delay
+        # gives the X server time to map the window before grabbing.
         self.after(50, self._activate)
 
     def _copy_error(self, message):

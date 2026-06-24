@@ -3,6 +3,16 @@ from models.contractor import ContractorData, RiskLevel, ScoreResult
 
 
 def evaluate_contractor(data: ContractorData) -> ScoreResult:
+    """
+    Evaluates a contractor's risk level based on aggregated data.
+    The total score is calculated across four key categories:
+    1. Legal status
+    2. Experience
+    3. VAT / Whitelist credibility
+    4. Corporate stability
+    
+    Returns a ScoreResult containing points and detailed justifications.
+    """
     result = ScoreResult(nip=data.nip)
     today = date.today()
 
@@ -70,8 +80,10 @@ def evaluate_contractor(data: ContractorData) -> ScoreResult:
     else:
         result.details.append("Stability (0 pts): Minor standard corporate changes.")
 
+    # Final Score Calculation
     result.total = result.legal_status + result.experience + result.vat_taxes + result.stability
 
+    # Determine Risk Level Recommendation
     if result.total >= 20:
         result.risk_level = RiskLevel.ACCEPT
     elif result.total >= 0:

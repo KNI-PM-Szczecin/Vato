@@ -4,6 +4,11 @@ import sys
 import datetime
 
 class HistoryManager:
+    """
+    Singleton class managing the application's local history.
+    Stores user activity (e.g., NIP validation, Batch processing) in a JSON file
+    located in the user's OS-specific application data directory.
+    """
     _instance = None
     
     def __new__(cls):
@@ -13,6 +18,10 @@ class HistoryManager:
         return cls._instance
         
     def _init_paths(self):
+        """
+        Initializes the cross-platform path to the local data directory
+        and ensures the history.json file exists.
+        """
         app_name = "Vato"
         if sys.platform.startswith('win'):
             base_dir = os.environ.get('LOCALAPPDATA') or os.environ.get('APPDATA') or os.path.expanduser('~')

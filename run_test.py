@@ -20,7 +20,7 @@ def print_scoring_dashboard(contractor: ContractorData):
     credibility = sc.get("credibility_score", 0)
     sanctions = sc.get("sanctions_score", 0)
     
-    # Funkcja pomocnicza do określania etykiety (POZYTYWNY / OSTRZEŻENIE)
+    # Helper function to determine label (POSITIVE / WARNING)
     def get_status_label(score, max_possible):
         return "POZYTYWNY" if score >= max_possible else "OSTRZEZENIE"
 
@@ -38,7 +38,7 @@ def print_scoring_dashboard(contractor: ContractorData):
     print()
     print("Uzasadnienia generowane systemowo:")
     
-    # Pobieranie uzasadnień ze słownika lub generowanie dynamicznych dla firm zagranicznych
+    # Retrieve justifications from dictionary or generate dynamically for foreign companies
     justifications = sc.get("justifications", [])
     if not justifications:
         if contractor.country_code != "PL":
@@ -99,7 +99,7 @@ async def verify_contractor(raw_nip: str, default_country: str = "PL") -> Contra
 
 
 async def main():
-    # Test dla firmy niemieckiej
+    # Test for a German company
     firma_de = await verify_contractor("DE129273398")
     
     # Wyświetlenie odtworzonego widoku
