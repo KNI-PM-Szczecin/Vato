@@ -108,7 +108,8 @@
     "validation_error": "Błąd walidacji",
     "api_error": "Błąd API",
     "send_error": "Błąd wysyłki",
-    "ok_btn": "Zrozumiałem"
+    "ok_btn": "Zrozumiałem",
+    "copy_error": "Skopiuj treść błędu"
   },
   "scorer": {
     "age_years": "Firma istnieje od {years} lat na rynku.",

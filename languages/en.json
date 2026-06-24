@@ -108,7 +108,8 @@
     "validation_error": "Validation Error",
     "api_error": "API Error",
     "send_error": "Sending Error",
-    "ok_btn": "Understood"
+    "ok_btn": "Understood",
+    "copy_error": "Copy error details"
   },
   "scorer": {
     "age_years": "Company has been on the market for {years} years.",
