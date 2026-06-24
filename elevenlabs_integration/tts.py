@@ -110,14 +110,42 @@ def play_text(text: str, override_voice: str = None, show_errors: bool = False):
             
             audio_data = b"".join(audio)
             import subprocess
+            import sys
             args = ["ffplay", "-autoexit", "-", "-nodisp", "-af", f"volume={vol_multiplier}"]
-            proc = subprocess.Popen(
-                args=args,
-                stdout=subprocess.PIPE,
-                stdin=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            proc.communicate(input=audio_data)
+            try:
+                proc = subprocess.Popen(
+                    args=args,
+                    stdout=subprocess.PIPE,
+                    stdin=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                proc.communicate(input=audio_data)
+            except FileNotFoundError:
+                if sys.platform.startswith("win"):
+                    import tempfile
+                    import os
+                    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+                        f.write(audio_data)
+                        tmp_path = f.name
+                    
+                    vol = int(33 * vol_multiplier)
+                    vol = max(0, min(100, vol))
+                    
+                    ps_script = f"""
+$player = New-Object -ComObject WMPlayer.OCX
+$player.settings.volume = {vol}
+$player.URL = '{tmp_path}'
+while ($player.playState -ne 3 -and $player.playState -ne 1 -and $player.playState -ne 10) {{ Start-Sleep -Milliseconds 100 }}
+while ($player.playState -eq 3) {{ Start-Sleep -Milliseconds 100 }}
+"""
+                    # 0x08000000 is CREATE_NO_WINDOW
+                    subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], creationflags=0x08000000)
+                    try:
+                        os.remove(tmp_path)
+                    except:
+                        pass
+                else:
+                    raise
         except Exception as e:
             if show_errors:
                 from views.popup import PopupMessage
