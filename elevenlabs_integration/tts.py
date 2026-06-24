@@ -3,7 +3,12 @@ import threading
 import re
 from dotenv import load_dotenv
 
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import sys
+if getattr(sys, 'frozen', False):
+    project_root = sys._MEIPASS
+else:
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 env_path = os.path.join(project_root, '.env')
 if os.path.exists(env_path):
     load_dotenv(dotenv_path=env_path)

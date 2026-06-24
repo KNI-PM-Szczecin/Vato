@@ -1,4 +1,3 @@
-from app import App
 import os
 import sys
 from dotenv import load_dotenv
@@ -10,7 +9,8 @@ else:
 
 load_dotenv(dotenv_path=os.path.join(base_path, '.env'))
 
+from app import App
+
 if __name__ == "__main__":
     app = App()
     app.mainloop()
-    
