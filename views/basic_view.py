@@ -194,12 +194,12 @@ class BasicView(ctk.CTkFrame):
                 self.append_result(full_report)
                 self.update_idletasks()
                 PopupMessage(t("popup.success"), quick_report, status=status_color)
-                
+
                 app = self.winfo_toplevel()
                 if hasattr(app, 'is_muted') and not getattr(app, 'is_muted', True):
                     from elevenlabs_integration.tts import play_text
-                    # The full_report does not contain the timestamp (it's added inside append_result)
-                    play_text(full_report)
+                    from services.tts_report import build_tts_report
+                    play_text(build_tts_report(cdata))
 
             self.after(0, _show_validate_result)
         except Exception as e:
@@ -252,8 +252,8 @@ class BasicView(ctk.CTkFrame):
                 app = self.winfo_toplevel()
                 if hasattr(app, 'is_muted') and not getattr(app, 'is_muted', True):
                     from elevenlabs_integration.tts import play_text
-                    # The user wants it to read the full evaluation (logs without dates)
-                    play_text(full_report)
+                    from services.tts_report import build_tts_report
+                    play_text(build_tts_report(cdata))
 
             self.after(0, _show_success)
         except Exception as e:
@@ -487,7 +487,8 @@ class BasicView(ctk.CTkFrame):
                 app = self.winfo_toplevel()
                 if hasattr(app, 'is_muted') and not getattr(app, 'is_muted', True):
                     from elevenlabs_integration.tts import play_text
-                    play_text(t("app.report_generated"))
+                    from services.tts_report import build_tts_report
+                    play_text(build_tts_report(cdata))
 
             self.after(0, _show_report_result)
         except Exception as e:
