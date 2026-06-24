@@ -25,6 +25,9 @@ class ContractorData(BaseModel):
     data_rozpoczecia: date | None = None
     status_vat: str = "NIEZNANY"
     rachunek_na_bialej_liscie: bool = False
+    is_vat_payer: bool = False
+    krs_number: str | None = None
+    regon_number: str | None = None
     zmiany_adresu_ostatni_rok: int = 0
     wymiana_zarzadu_ostatnie_3msc: bool = False
     czeste_zmiany_formy: bool = False

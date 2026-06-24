@@ -60,6 +60,10 @@ async def enrich(data: ContractorData) -> ContractorData:
     
     # Status Rejestrowy & Wiarygodnosc
     status_vat = str(getattr(data, 'status_vat', 'NIEZNANY') or 'NIEZNANY').upper()
+    legal_status = (getattr(data, 'status_prawny', 'NIEZNANY') or 'NIEZNANY').upper()
+    on_whitelist = getattr(data, 'rachunek_na_bialej_liscie', False)
+    is_vies_confirmed = getattr(data, 'is_vat_payer', False)
+
     if country_code == "PL":
         if "CZYNNY" in status_vat:
             credibility_score = 15
@@ -67,33 +71,36 @@ async def enrich(data: ContractorData) -> ContractorData:
         else:
             credibility_score = 0
             justifications.append(t("scorer.cred_pl_bad", status=status_vat))
-    else:
-        credibility_score = 15
-        justifications.append(t("scorer.cred_eu_unknown", country=country_code))
 
-    legal_status = (getattr(data, 'status_prawny', 'NIEZNANY') or 'NIEZNANY' ).upper()
-    on_whitelist = getattr(data, 'rachunek_na_bialej_liscie', False)
-    
-    if country_code == "PL":
         if legal_status == "AKTYWNA":
             reg_score += 5
         elif legal_status in ("NIEZNANY", "", None):
-            # Brak danych z KRS/CEIDG = neutralnie, nie karamy za niedostepnosc danych
             reg_score += 2
-        if "CZYNNY" in status_vat: reg_score += 5
-        if on_whitelist: reg_score += 5
+        if "CZYNNY" in status_vat:
+            reg_score += 5
+        if on_whitelist:
+            reg_score += 5
 
-        if reg_score < 15:
-            justifications.append(t("scorer.reg_pl_bad", legal=legal_status, vat=status_vat, whitelist=on_whitelist))
-        else:
+        ceidg_likely = legal_status in ("NIEZNANY", "", None) and "CZYNNY" in status_vat
+        fully_ok = legal_status == "AKTYWNA" and "CZYNNY" in status_vat
+        if ceidg_likely:
+            justifications.append(t("scorer.reg_ceidg_neutral"))
+        elif fully_ok or reg_score >= 15:
             justifications.append(t("scorer.reg_pl_good"))
-            
+        else:
+            whitelist_str = "TAK" if on_whitelist else "NIE"
+            justifications.append(t("scorer.reg_pl_bad", legal=legal_status, vat=status_vat, whitelist=whitelist_str))
+
     else:
-        if "CZYNNY" in status_vat or legal_status == "AKTYWNA":
+        vies_confirmed = "CZYNNY" in status_vat or legal_status == "AKTYWNA" or is_vies_confirmed
+        if vies_confirmed:
+            credibility_score = 15
             reg_score = 15
             justifications.append(t("scorer.reg_eu_good"))
         else:
-            reg_score = 5
+            # Nieznaleziony w VIES — wynik neutralny, nie karamy za limit API
+            credibility_score = 5
+            reg_score = 2
             justifications.append(t("scorer.reg_eu_bad", legal=legal_status, vat=status_vat))
     
     
@@ -109,8 +116,10 @@ async def enrich(data: ContractorData) -> ContractorData:
     
     # Kapital firmy
     if country_code != "PL":
-        cap_score = 10
-        bailiff_score = 25
+        # Neutralne wartości — brak dostępu do zagranicznych rejestrów
+        # Jeśli VIES potwierdził → lekko wyższe, jeśli nie → ostrożniejsze
+        cap_score = 7 if not vies_confirmed else 10
+        bailiff_score = 15 if not vies_confirmed else 20
         justifications.append(t("scorer.cap_eu", country=country_code))
     else:
         share_capital = getattr(data, 'share_capital', None)
