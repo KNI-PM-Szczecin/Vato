@@ -4,16 +4,11 @@ import re
 from dotenv import load_dotenv
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-env_path = os.path.join(project_root, 'api', '.env')
+env_path = os.path.join(project_root, '.env')
 if os.path.exists(env_path):
     load_dotenv(dotenv_path=env_path)
 else:
-    # Fallback to root .env if api/.env doesn't exist
-    root_env = os.path.join(project_root, '.env')
-    if os.path.exists(root_env):
-        load_dotenv(dotenv_path=root_env)
-    else:
-        load_dotenv()
+    load_dotenv()
 
 _is_playing = False
 _tts_busy_popup_open = False

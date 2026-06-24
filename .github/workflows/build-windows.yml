@@ -26,9 +26,21 @@ jobs:
           pip install pyinstaller
           pip install -r requirements.txt
 
+      - name: Generate .env from Secrets
+        shell: bash
+        run: |
+          echo "CEIDG_API_KEY=${{ secrets.CEIDG_API_KEY }}" >> .env
+          echo "REGON_API_KEY=${{ secrets.REGON_API_KEY }}" >> .env
+          echo "ELEVENLABS_API_KEY=${{ secrets.ELEVENLABS_API_KEY }}" >> .env
+          echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .env
+          echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
+          echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
+          echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> .env
+          echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> .env
+
       - name: Build application
         run: |
-          pyinstaller --noconfirm --onefile --windowed --name Vato --icon=static/vato_v_white.ico --add-data "languages;languages/" --add-data "static;static/" --collect-all customtkinter main.py
+          pyinstaller --noconfirm --onefile --windowed --name Vato --icon=static/vato_v_white.ico --add-data "languages;languages/" --add-data "static;static/" --add-data ".env;." --collect-all customtkinter main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

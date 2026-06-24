@@ -2,8 +2,8 @@ import os
 import sys
 from dotenv import load_dotenv
 
-project_root = os.path.dirname(os.path.abspath(__file__))
-env_path = os.path.join(project_root, 'api', '.env')
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+env_path = os.path.join(project_root, '.env')
 load_dotenv(dotenv_path=env_path)
 
 api_key = os.environ.get("ELEVENLABS_API_KEY")

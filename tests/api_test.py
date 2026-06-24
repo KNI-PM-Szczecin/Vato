@@ -10,7 +10,7 @@ except ImportError:
 
 try:
     from dotenv import load_dotenv
-    load_dotenv("api/.env")
+    load_dotenv(".env")
 except ImportError:
     pass
 
