@@ -221,10 +221,44 @@ def export_results_pdf(results, path: str) -> None:
         
         # 4. Print Justifications
         if justifications:
-            story.append(P("<b>Uzasadnienie wyniku (Analiza ryzyka):</b>", bold_body_style))
-            story.append(Spacer(1, 4))
+            just_header_style = ParagraphStyle(
+                'JustHeader',
+                parent=bold_body_style,
+                textColor=colors.white,
+                fontSize=11,
+                leading=16,
+            )
+            just_item_style = ParagraphStyle(
+                'JustItem',
+                parent=body_style,
+                leftIndent=12,
+                firstLineIndent=-12,
+                spaceAfter=4,
+                fontSize=10,
+                leading=15,
+                textColor=TEXT_COLOR,
+            )
+            box_rows = [[P("<b>Uzasadnienie wyniku (Analiza ryzyka)</b>", just_header_style)]]
             for j in justifications:
-                story.append(P(f"• {j}", justification_style))
+                box_rows.append([P(f"• {strip_polish_chars(j)}", just_item_style)])
+
+            box_table = Table(box_rows, colWidths=[520])
+            box_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), PRIMARY_COLOR),
+                ('LINEBELOW', (0, 0), (-1, 0), 2, SECONDARY_COLOR),
+                ('LINEBEFORE', (0, 0), (0, -1), 4, SECONDARY_COLOR),
+                ('BOX', (0, 0), (-1, -1), 1, PRIMARY_COLOR),
+                ('INNERGRID', (0, 1), (-1, -1), 0.5, BORDER_COLOR),
+                ('TOPPADDING', (0, 0), (-1, 0), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 9),
+                ('TOPPADDING', (0, 1), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
+                ('LEFTPADDING', (0, 0), (-1, -1), 14),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, BG_LIGHT]),
+            ]))
+            story.append(box_table)
                 
         # Draw line separator between contractors
         story.append(Spacer(1, 10))
