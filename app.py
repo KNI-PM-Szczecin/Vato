@@ -207,16 +207,27 @@ class App(ctk.CTk):
         new_advanced = t("tabs.advanced")
         new_history = t("tabs.history")
         
+        current_tab = self.main_tabs.get()
+        
         if new_basic != self._tab_name_basic:
             self.main_tabs.rename(self._tab_name_basic, new_basic)
+            if current_tab == self._tab_name_basic:
+                self.main_tabs.set(new_basic)
+                current_tab = new_basic
             self._tab_name_basic = new_basic
             
         if new_advanced != self._tab_name_advanced:
             self.main_tabs.rename(self._tab_name_advanced, new_advanced)
+            if current_tab == self._tab_name_advanced:
+                self.main_tabs.set(new_advanced)
+                current_tab = new_advanced
             self._tab_name_advanced = new_advanced
             
         if new_history != self._tab_name_history:
             self.main_tabs.rename(self._tab_name_history, new_history)
+            if current_tab == self._tab_name_history:
+                self.main_tabs.set(new_history)
+                current_tab = new_history
             self._tab_name_history = new_history
         
         self.basic_view.update_texts()

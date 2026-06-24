@@ -21,10 +21,11 @@ class SettingsView(ctk.CTkFrame):
         
         self.lang_selector = ctk.CTkComboBox(
             self.lang_card, 
-            values=["Polski", "English"],
+            values=["Polski", "English", "Deutsch"],
             command=self.change_language
         )
-        current = "English" if get_language() == "en" else "Polski"
+        current_lang = get_language()
+        current = "English" if current_lang == "en" else ("Deutsch" if current_lang == "de" else "Polski")
         self.lang_selector.set(current)
         self.lang_selector.grid(row=1, column=0, sticky="w", padx=20, pady=(0, 15))
 
@@ -121,6 +122,7 @@ class SettingsView(ctk.CTkFrame):
         
         self._voices_pl = ["Adam", "Antoni", "Domi", "Rachel"]
         self._voices_en = ["Rachel", "Drew", "Clyde", "Mimi", "Fin"]
+        self._voices_de = ["Rachel", "Drew", "Clyde", "Mimi", "Fin"]
         self._update_voice_options(get_language())
         
         import threading
@@ -140,6 +142,7 @@ class SettingsView(ctk.CTkFrame):
             if voices and voices.get("pl") and voices.get("en"):
                 self._voices_pl = voices["pl"]
                 self._voices_en = voices["en"]
+                self._voices_de = voices.get("de", self._voices_en)
                 # Safe GUI update from thread in customtkinter using after
                 self.after(0, lambda: self._update_voice_options(get_language()))
         except Exception as e:
@@ -152,7 +155,9 @@ class SettingsView(ctk.CTkFrame):
         play_text(phrase, override_voice=voice, show_errors=True)
 
     def change_language(self, choice):
-        lang = "en" if choice == "English" else "pl"
+        if choice == "English": lang = "en"
+        elif choice == "Deutsch": lang = "de"
+        else: lang = "pl"
         from services.i18n import set_language
         set_language(lang)
         app = self.winfo_toplevel()
@@ -163,7 +168,8 @@ class SettingsView(ctk.CTkFrame):
     def _update_voice_options(self, lang):
         voices = {
             "pl": self._voices_pl,
-            "en": self._voices_en
+            "en": self._voices_en,
+            "de": self._voices_de
         }
         available_voices = voices.get(lang, voices["en"])
         self.voice_selector.configure(values=available_voices)
