@@ -58,6 +58,8 @@
     "set_dest": "Zieldatei gesetzt auf: {file}",
     "no_source": "Bitte wählen Sie eine Quelldatei.",
     "starting": "Starte Stapelprüfung (läuft im Hintergrund)...",
+    "mock_mode": "Testmodus (API deaktiviert)",
+    "mock_mode_active": "[TESTMODUS] Verwende Mock-Daten — API deaktiviert.",
     "source_not_found": "Quelldatei existiert nicht.",
     "no_nips": "Keine gültigen NIP-Nummern in der Datei gefunden.",
     "found_nips": "{count} NIPs gefunden. Datenabruf wird gestartet...",

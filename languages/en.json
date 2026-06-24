@@ -57,7 +57,7 @@
     "loaded_source": "Loaded source file: {file}",
     "set_dest": "Destination file set to: {file}",
     "no_source": "Please select a source file.",
-    "mock_mode": "Test mode (no API calls)",
+    "mock_mode": "Test mode (API disabled)",
     "mock_mode_active": "[TEST MODE] Using mock data — API disabled.",
     "starting": "Starting batch validation (running in background)...",
     "source_not_found": "Source file does not exist.",

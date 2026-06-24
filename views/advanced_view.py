@@ -60,11 +60,11 @@ class AdvancedView(ctk.CTkFrame):
 
         self.open_file_var = ctk.StringVar(value="off")
         self.open_file_checkbox = ctk.CTkCheckBox(self.checkbox_frame, text=t("advanced.open_file"), variable=self.open_file_var, onvalue="on", offvalue="off")
-        self.open_file_checkbox.grid(row=0, column=0, sticky="w", padx=(0, 20))
+        self.open_file_checkbox.grid(row=0, column=0, sticky="w", padx=(0, 15))
 
         self.attach_orig_var = ctk.StringVar(value="off")
         self.attach_orig_checkbox = ctk.CTkCheckBox(self.checkbox_frame, text=t("advanced.attach_orig"), variable=self.attach_orig_var, onvalue="on", offvalue="off")
-        self.attach_orig_checkbox.grid(row=0, column=1, sticky="w")
+        self.attach_orig_checkbox.grid(row=0, column=1, sticky="w", padx=(0, 15))
 
         self.mock_mode_var = ctk.StringVar(value="off")
         self.mock_mode_checkbox = ctk.CTkCheckBox(
@@ -72,7 +72,7 @@ class AdvancedView(ctk.CTkFrame):
             variable=self.mock_mode_var, onvalue="on", offvalue="off",
             text_color=("#E65100", "#FFA040"),
         )
-        self.mock_mode_checkbox.grid(row=1, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        self.mock_mode_checkbox.grid(row=0, column=2, sticky="w")
 
         self.quick_validate_btn = ctk.CTkButton(
             self.actions_card, text=t("advanced.validate_save"), height=35,
