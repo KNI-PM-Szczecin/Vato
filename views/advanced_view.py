@@ -182,7 +182,9 @@ class AdvancedView(ctk.CTkFrame):
 
         from services.history_manager import HistoryManager
         import os
-        HistoryManager().add_entry("BATCH", os.path.basename(src))
+        HistoryManager().add_entry("BATCH", src)
+        
+        threading.Thread(target=self._simulate_processing, args=(dest,), daemon=True).start()
 
         threading.Thread(target=self._simulate_processing, args=(dest, mock), daemon=True).start()
 
@@ -190,8 +192,12 @@ class AdvancedView(ctk.CTkFrame):
         import os
         import platform
         import subprocess
-        from utils.excel_export import read_nips_from_excel, export_results
-
+        import asyncio
+        from utils.excel_export import read_nips_from_excel
+        import api_test
+        import openpyxl
+        import shutil
+        
         src_path = self.load_input.get().strip()
         if not src_path or not os.path.exists(src_path):
             self.after(0, lambda: PopupMessage(t("popup.error"), t("advanced.source_not_found"), status="error"))
