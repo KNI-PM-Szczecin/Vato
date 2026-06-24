@@ -138,7 +138,6 @@ class SettingsView(ctk.CTkFrame):
     def _fetch_voices_async(self):
         try:
             from elevenlabs_integration.tts import get_available_voices
-            from services.i18n import get_language
             voices = get_available_voices()
             if voices and voices.get("pl") and voices.get("en"):
                 self._voices_pl = voices["pl"]
@@ -159,7 +158,6 @@ class SettingsView(ctk.CTkFrame):
         if choice == "English": lang = "en"
         elif choice == "Deutsch": lang = "de"
         else: lang = "pl"
-        from services.i18n import set_language
         set_language(lang)
         app = self.winfo_toplevel()
         if hasattr(app, "config_manager"):

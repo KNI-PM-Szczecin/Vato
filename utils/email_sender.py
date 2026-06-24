@@ -32,37 +32,39 @@ def send_report(
     with tempfile.NamedTemporaryFile(delete=False, suffix=f".{'xlsx' if fmt == 'Excel' else 'pdf'}") as tmp:
         tmp_path = tmp.name
 
-    if fmt == "Excel":
-        from utils.excel_export import export_results
-        export_results(results, tmp_path)
-        mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        filename = "contractor_report.xlsx"
-    else:
-        from utils.pdf_export import export_results_pdf
-        export_results_pdf(results, tmp_path)
-        mime_type = "application/pdf"
-        filename = "contractor_report.pdf"
+    try:
+        if fmt == "Excel":
+            from utils.excel_export import export_results
+            export_results(results, tmp_path)
+            mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            filename = "contractor_report.xlsx"
+        else:
+            from utils.pdf_export import export_results_pdf
+            export_results_pdf(results, tmp_path)
+            mime_type = "application/pdf"
+            filename = "contractor_report.pdf"
 
-    # Build email
-    msg = MIMEMultipart()
-    msg["From"] = smtp_from
-    msg["To"] = recipient
-    msg["Subject"] = subject
+        # Build email
+        msg = MIMEMultipart()
+        msg["From"] = smtp_from
+        msg["To"] = recipient
+        msg["Subject"] = subject
 
-    nip_list = ", ".join(r.nip for r in results)
-    body = f"Please find attached the contractor verification report ({nip_list}).\n\nVato — Contractor Verification Tool"
-    msg.attach(MIMEText(body, "plain", "utf-8"))
+        nip_list = ", ".join(r.nip for r in results)
+        body = f"Please find attached the contractor verification report ({nip_list}).\n\nVato — Contractor Verification Tool"
+        msg.attach(MIMEText(body, "plain", "utf-8"))
 
-    with open(tmp_path, "rb") as f:
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(f.read())
-    encoders.encode_base64(part)
-    part.add_header("Content-Disposition", f'attachment; filename="{filename}"')
-    msg.attach(part)
+        with open(tmp_path, "rb") as f:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(f.read())
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", f'attachment; filename="{filename}"')
+        msg.attach(part)
 
-    os.unlink(tmp_path)
-
-    with smtplib.SMTP(smtp_host, smtp_port) as server:
-        server.starttls()
-        server.login(smtp_user, smtp_pass)
-        server.sendmail(smtp_from, recipient, msg.as_string())
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_from, recipient, msg.as_string())
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)

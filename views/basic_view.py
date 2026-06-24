@@ -137,7 +137,7 @@ class BasicView(ctk.CTkFrame):
         from elevenlabs_integration.tts import stop_tts
         stop_tts()
             
-        self.validation_btn.configure(state="disabled", text=t("basic.validating_btn"))
+        self.quick_validate_btn.configure(state="disabled", text=t("basic.validating_btn"))
         self.pdf_report_btn.configure(state="disabled")
         self.append_result(t("basic.validating", nip=nip))
 
