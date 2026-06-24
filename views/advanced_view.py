@@ -5,6 +5,8 @@ from tkinter import filedialog
 from views.popup import PopupMessage
 import threading
 from services.i18n import t
+from utils.excel_export import export_results
+import os
 
 class AdvancedView(ctk.CTkFrame):
     def __init__(self, master):
