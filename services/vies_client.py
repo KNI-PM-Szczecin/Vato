@@ -37,12 +37,16 @@ async def fech_vies_data(country_code: str, vat_number: str) -> dict:
 
 async def enrich(data: ContractorData) -> ContractorData:
     country = getattr(data, 'country_code', 'PL') or 'PL'
-    if country == 'PL':
-        pass
     vies_data = await fech_vies_data(country, data.nip)
-    
-    return data.model_copy(update={
+
+    update = {
+        "is_vat_payer": vies_data["is_vat_payer"],
         "status_vat": "CZYNNY" if vies_data["is_vat_payer"] else "NIEZNANY",
-        "legal_name": vies_data["legal_name"],
         "status_prawny": "AKTYWNA" if vies_data["is_vat_payer"] else "NIEZNANY",
-    })
+    }
+    # Only overwrite legal_name if VIES returned a real name
+    vies_name = vies_data.get("legal_name", "---")
+    if vies_name and vies_name != "---":
+        update["legal_name"] = vies_name
+
+    return data.model_copy(update=update)
