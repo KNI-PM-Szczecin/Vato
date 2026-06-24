@@ -29,17 +29,15 @@ jobs:
       - name: Inject Secrets to Python
         shell: bash
         run: |
-          cat > env_vars.py << 'EOF'
-import os
-os.environ["CEIDG_API_KEY"] = "${{ secrets.CEIDG_API_KEY }}"
-os.environ["REGON_API_KEY"] = "${{ secrets.REGON_API_KEY }}"
-os.environ["ELEVENLABS_API_KEY"] = "${{ secrets.ELEVENLABS_API_KEY }}"
-os.environ["SMTP_HOST"] = "${{ secrets.SMTP_HOST }}"
-os.environ["SMTP_PORT"] = "${{ secrets.SMTP_PORT }}"
-os.environ["SMTP_USER"] = "${{ secrets.SMTP_USER }}"
-os.environ["SMTP_PASSWORD"] = "${{ secrets.SMTP_PASSWORD }}"
-os.environ["SMTP_FROM"] = "${{ secrets.SMTP_FROM }}"
-EOF
+          echo 'import os' > env_vars.py
+          echo 'os.environ["CEIDG_API_KEY"] = "${{ secrets.CEIDG_API_KEY }}"' >> env_vars.py
+          echo 'os.environ["REGON_API_KEY"] = "${{ secrets.REGON_API_KEY }}"' >> env_vars.py
+          echo 'os.environ["ELEVENLABS_API_KEY"] = "${{ secrets.ELEVENLABS_API_KEY }}"' >> env_vars.py
+          echo 'os.environ["SMTP_HOST"] = "${{ secrets.SMTP_HOST }}"' >> env_vars.py
+          echo 'os.environ["SMTP_PORT"] = "${{ secrets.SMTP_PORT }}"' >> env_vars.py
+          echo 'os.environ["SMTP_USER"] = "${{ secrets.SMTP_USER }}"' >> env_vars.py
+          echo 'os.environ["SMTP_PASSWORD"] = "${{ secrets.SMTP_PASSWORD }}"' >> env_vars.py
+          echo 'os.environ["SMTP_FROM"] = "${{ secrets.SMTP_FROM }}"' >> env_vars.py
 
       - name: Build application
         run: |

@@ -189,8 +189,6 @@ class AdvancedView(ctk.CTkFrame):
         import os
         HistoryManager().add_entry("BATCH", src)
         
-        threading.Thread(target=self._simulate_processing, args=(dest,), daemon=True).start()
-
         threading.Thread(target=self._simulate_processing, args=(dest, mock), daemon=True).start()
 
     def _simulate_processing(self, dest_path=None, mock_mode=False, user_email=None):
