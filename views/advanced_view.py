@@ -197,7 +197,7 @@ class AdvancedView(ctk.CTkFrame):
         import subprocess
         import asyncio
         from utils.excel_export import read_nips_from_excel
-        import api_test
+
         import openpyxl
         import shutil
         
