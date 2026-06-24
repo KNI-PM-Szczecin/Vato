@@ -96,6 +96,7 @@
     "recommendation": "Rekomendacja: {recommendation}",
     "details_title": "Szczegóły oceny",
     "analysis_title": "Uzasadnienie wyniku (Analiza ryzyka)",
+    "test_report_title": "Raport cząstkowy kategorii",
     "footer": "Wiadomość wygenerowana automatycznie przez aplikację Vato."
   },
   "popup": {

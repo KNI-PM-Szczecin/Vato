@@ -364,6 +364,39 @@ class BasicView(ctk.CTkFrame):
                     f'</tr>'
                 )
 
+            # Build test-report section: category breakdown (mirrors run_test.py print_scoring_dashboard)
+            test_report_rows = ""
+            for cat in score_data.get("categories", []):
+                cat_score = cat["score"]
+                cat_max   = cat["max_score"]
+                cat_name  = cat["category_name"]
+                cat_status = cat.get("status", "")
+                pct = int((cat_score / cat_max * 100)) if cat_max else 0
+
+                if cat_score == cat_max:
+                    badge_bg, badge_fg, badge_txt = "#e6f4ea", "#1e7e34", "POZYTYWNY"
+                elif cat_score > 0:
+                    badge_bg, badge_fg, badge_txt = "#fff3e0", "#e65100", "OSTRZEZENIE"
+                else:
+                    badge_bg, badge_fg, badge_txt = "#fdecea", "#c62828", "NEGATYWNY"
+
+                bar_color = badge_fg
+                test_report_rows += (
+                    f'<tr style="border-bottom:1px solid #eef0f4;">'
+                    f'<td style="padding:10px 14px;font-size:12px;font-weight:600;color:#1e3c72;width:180px;">{cat_name}</td>'
+                    f'<td style="padding:10px 14px;width:140px;">'
+                    f'<div style="background:#e8eaf0;border-radius:6px;height:8px;overflow:hidden;">'
+                    f'<div style="background:{bar_color};width:{pct}%;height:8px;border-radius:6px;"></div>'
+                    f'</div>'
+                    f'<span style="font-size:11px;color:#666;margin-top:3px;display:block;">{cat_score}/{cat_max} pkt</span>'
+                    f'</td>'
+                    f'<td style="padding:10px 14px;text-align:right;">'
+                    f'<span style="background:{badge_bg};color:{badge_fg};font-size:10px;font-weight:700;'
+                    f'padding:3px 9px;border-radius:12px;letter-spacing:0.5px;">{badge_txt}</span>'
+                    f'</td>'
+                    f'</tr>'
+                )
+
             logo_img = (
                 f'<img src="data:image/png;base64,{_LOGO_B64}" alt="Vato" '
                 f'style="max-width:160px;height:auto;display:block;margin:0 auto;">'
@@ -423,6 +456,20 @@ class BasicView(ctk.CTkFrame):
         </thead>
         <tbody>{details_items}</tbody>
       </table>
+
+      <!-- RAPORT CZĄSTKOWY KATEGORII (run_test.py dashboard) -->
+      <p style="font-size:11px;font-weight:700;color:#1e3c72;text-transform:uppercase;letter-spacing:1.2px;border-bottom:2px solid #e8eaf0;padding-bottom:7px;margin:0 0 10px;">{t("email.test_report_title")}</p>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e8eaf0;margin-bottom:8px;">
+        <thead>
+          <tr style="background:#0B3D6B;color:#fff;">
+            <th style="padding:8px 14px;text-align:left;font-size:11px;font-weight:600;width:180px;">Kategoria</th>
+            <th style="padding:8px 14px;text-align:left;font-size:11px;font-weight:600;">Wynik</th>
+            <th style="padding:8px 14px;text-align:right;font-size:11px;font-weight:600;width:110px;">Status</th>
+          </tr>
+        </thead>
+        <tbody>{test_report_rows}</tbody>
+      </table>
+      <p style="font-size:10px;color:#aaa;margin:0 0 20px;text-align:right;">Raport wygenerowany automatycznie · {report_date} {report_time}</p>
 
     </div>
 
