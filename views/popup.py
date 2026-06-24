@@ -1,7 +1,7 @@
 import customtkinter as ctk
 
 class PopupMessage(ctk.CTkToplevel):
-    def __init__(self, title, message, status="default"):
+    def __init__(self, title, message, status="default", **kwargs):
         super().__init__()
 
         self.title(title)
@@ -49,6 +49,18 @@ class PopupMessage(ctk.CTkToplevel):
         self.label.pack(pady=(30, 20), padx=20, fill="both", expand=True)
 
         from services.i18n import t
+        
+        if kwargs.get("tts_progress", False):
+            self.progress_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+            self.progress_frame.pack(fill="x", padx=40, pady=(0, 10))
+            
+            self.progress = ctk.CTkProgressBar(self.progress_frame, mode="indeterminate", height=6)
+            self.progress.pack(fill="x", pady=(0, 5))
+            self.progress.start()
+            
+            self.tts_label = ctk.CTkLabel(self.progress_frame, text=t("popup.tts_loading", default="Ładowanie modułu mowy (ElevenLabs)..."), font=ctk.CTkFont(size=11), text_color="gray")
+            self.tts_label.pack()
+
         self.button_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         self.button_frame.pack(pady=(0, 20))
 
@@ -69,7 +81,7 @@ class PopupMessage(ctk.CTkToplevel):
         self.button = ctk.CTkButton(
             self.button_frame, 
             text=t("popup.ok_btn"), 
-            command=self.destroy,
+            command=self._close_popup,
             width=120,
             fg_color=color_pair,
             hover_color=color_pair[1],
@@ -88,6 +100,21 @@ class PopupMessage(ctk.CTkToplevel):
         self.copy_btn.configure(text=t("popup.copied_title"))
         self.after(2000, lambda: self.copy_btn.configure(text=t("popup.copy_error")))
 
+    def stop_tts_progress(self):
+        try:
+            if hasattr(self, "progress"):
+                self.progress.stop()
+            if hasattr(self, "progress_frame"):
+                self.progress_frame.destroy()
+        except Exception:
+            pass
+
+    def _close_popup(self):
+        try:
+            self.grab_release()
+        except Exception:
+            pass
+        self.destroy()
 
     def _activate(self):
         self.lift()

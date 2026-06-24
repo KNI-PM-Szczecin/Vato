@@ -15,18 +15,60 @@ else:
     else:
         load_dotenv()
 
-def play_text(text: str, override_voice: str = None, show_errors: bool = False):
+_is_playing = False
+_tts_busy_popup_open = False
+_current_tts_process = None
+
+def stop_tts(show_popup=True):
+    global _current_tts_process, _is_playing, _tts_busy_popup_open
+    interrupted = False
+    
+    if _current_tts_process is not None:
+        try:
+            _current_tts_process.kill()
+            interrupted = True
+        except Exception:
+            pass
+        _current_tts_process = None
+        
+    if _is_playing and not interrupted:
+        # It was loading from network but hasn't started playing yet
+        interrupted = True
+        
+    _is_playing = False
+    _tts_busy_popup_open = False
+    
+    if interrupted and show_popup:
+        from views.popup import PopupMessage
+        from services.i18n import t
+        # We don't want this popup to block the UI aggressively, so we'll just show it briefly or let the user click OK.
+        # But wait, maybe just a simple information is enough.
+        PopupMessage(t("popup.warning"), "Poprzedni lektor został przerwany przez nowe żądanie.", status="warning")
+
+def play_text(text: str, override_voice: str = None, show_errors: bool = False, on_start=None):
+    global _is_playing, _tts_busy_popup_open, _current_tts_process
+    
+    if _is_playing:
+        if show_errors and not _tts_busy_popup_open:
+            _tts_busy_popup_open = True
+            from views.popup import PopupMessage
+            from services.i18n import t
+            
+            def _on_close(e):
+                global _tts_busy_popup_open
+                _tts_busy_popup_open = False
+                
+            p = PopupMessage(t("popup.warning"), t("settings.tts_busy"), status="warning")
+            p.bind("<Destroy>", lambda e: _on_close(e) if e.widget == p else None)
+        return
+        
     from services.i18n import get_language
     lang = get_language()
 
     # Preprocess text for ElevenLabs
-    # Expand "pkt" / "pkt." to "punkty"
     text = re.sub(r'\bpkt\.?', 'punkty', text, flags=re.IGNORECASE)
-    
-    # Split digits only in 10-digit numbers (NIP)
     text = re.sub(r'\b\d{10}\b', lambda m: ' '.join(m.group(0)), text)
     
-    # Translate true/false and leftover Polish API statuses
     if lang == "pl":
         text = re.sub(r'\btrue\b', 'prawda', text, flags=re.IGNORECASE)
         text = re.sub(r'\bfalse\b', 'fałsz', text, flags=re.IGNORECASE)
@@ -60,6 +102,9 @@ def play_text(text: str, override_voice: str = None, show_errors: bool = False):
         api_key = api_key.strip()
     
     if not api_key:
+        if on_start:
+            try: on_start()
+            except: pass
         if show_errors:
             from views.popup import PopupMessage
             from services.i18n import t
@@ -69,9 +114,9 @@ def play_text(text: str, override_voice: str = None, show_errors: bool = False):
         return
         
     def _run_tts():
+        global _current_tts_process, _is_playing
         try:
             from elevenlabs.client import ElevenLabs
-            from elevenlabs.play import play
             
             from services.config_manager import ConfigManager
             from services.i18n import get_language
@@ -85,8 +130,7 @@ def play_text(text: str, override_voice: str = None, show_errors: bool = False):
             
             client = ElevenLabs(api_key=api_key)
             
-            # Find the ID for the requested voice name
-            voice_id = "21m00Tcm4TlvDq8ikWAM" # default Rachel
+            voice_id = "21m00Tcm4TlvDq8ikWAM"
             try:
                 voices_res = client.voices.get_all()
                 for v in voices_res.voices:
@@ -103,12 +147,29 @@ def play_text(text: str, override_voice: str = None, show_errors: bool = False):
                 output_format="mp3_44100_128"
             )
             
-            # The user considers the default generated audio volume as 33% (slider = 0.33)
-            # So if slider is 0.33 -> multiplier 1.0. If slider is 1.0 -> multiplier ~3.0
+            if not _is_playing:
+                if on_start:
+                    try: on_start()
+                    except: pass
+                return
+            
             tts_vol = ConfigManager().get("tts_volume", 0.33)
             vol_multiplier = tts_vol * 3.0
             
             audio_data = b"".join(audio)
+            
+            if not _is_playing:
+                if on_start:
+                    try: on_start()
+                    except: pass
+                return
+            
+            if on_start:
+                try:
+                    on_start()
+                except Exception:
+                    pass
+            
             import subprocess
             import sys
             args = ["ffplay", "-autoexit", "-", "-nodisp", "-af", f"volume={vol_multiplier}"]
@@ -119,6 +180,7 @@ def play_text(text: str, override_voice: str = None, show_errors: bool = False):
                     stdin=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )
+                _current_tts_process = proc
                 proc.communicate(input=audio_data)
             except FileNotFoundError:
                 if sys.platform.startswith("win"):
@@ -138,15 +200,23 @@ $player.URL = '{tmp_path}'
 while ($player.playState -ne 3 -and $player.playState -ne 1 -and $player.playState -ne 10) {{ Start-Sleep -Milliseconds 100 }}
 while ($player.playState -eq 3) {{ Start-Sleep -Milliseconds 100 }}
 """
-                    # 0x08000000 is CREATE_NO_WINDOW
-                    subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], creationflags=0x08000000)
+                    proc = subprocess.Popen(["powershell", "-NoProfile", "-Command", ps_script], creationflags=0x08000000)
+                    _current_tts_process = proc
+                    proc.wait()
                     try:
                         os.remove(tmp_path)
                     except:
                         pass
                 else:
                     raise
+            finally:
+                _current_tts_process = None
         except Exception as e:
+            if on_start:
+                try:
+                    on_start()
+                except Exception:
+                    pass
             if show_errors:
                 from views.popup import PopupMessage
                 from services.i18n import t
@@ -162,7 +232,10 @@ while ($player.playState -eq 3) {{ Start-Sleep -Milliseconds 100 }}
                     pass
             else:
                 print(f"TTS Error: {e}")
+        finally:
+            _is_playing = False
             
+    _is_playing = True
     threading.Thread(target=_run_tts, daemon=True).start()
 
 def get_available_voices():

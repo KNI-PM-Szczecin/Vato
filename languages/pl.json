@@ -86,7 +86,8 @@
     "tts_voice": "Głos lektora (ElevenLabs)",
     "tts_test": "Jestem modelem mowy {name}",
     "no_api_key": "Brak klucza ELEVENLABS_API_KEY w zmiennych środowiskowych.",
-    "invalid_api_key": "Nieprawidłowy klucz API (Invalid API key)."
+    "invalid_api_key": "Nieprawidłowy klucz API (Invalid API key).",
+    "tts_busy": "Trwa odtwarzanie nagrania. Proszę czekać aż poprzednie nagranie się zakończy."
   },
   "email": {
     "subject": "Raport weryfikacji KYC - {nip}",
@@ -109,7 +110,8 @@
     "api_error": "Błąd API",
     "send_error": "Błąd wysyłki",
     "ok_btn": "Zrozumiałem",
-    "copy_error": "Skopiuj treść błędu"
+    "copy_error": "Skopiuj treść błędu",
+    "tts_loading": "Ładowanie ElevenLabs..."
   },
   "scorer": {
     "age_years": "Firma istnieje od {years} lat na rynku.",

@@ -86,7 +86,8 @@
     "tts_voice": "TTS-Stimme (ElevenLabs)",
     "tts_test": "Ich bin das Sprachmodell {name}",
     "no_api_key": "Fehlender ELEVENLABS_API_KEY in den Umgebungsvariablen.",
-    "invalid_api_key": "Ungültiger API-Schlüssel."
+    "invalid_api_key": "Ungültiger API-Schlüssel.",
+    "tts_busy": "Wiedergabe läuft. Bitte warten Sie, bis die vorherige Aufnahme beendet ist."
   },
   "email": {
     "subject": "KYC-Prüfbericht - {nip}",
@@ -108,7 +109,8 @@
     "api_error": "API-Fehler",
     "send_error": "Sende-Fehler",
     "ok_btn": "Verstanden",
-    "copy_error": "Fehlerdetails kopieren"
+    "copy_error": "Fehlertext kopieren",
+    "tts_loading": "ElevenLabs wird geladen..."
   },
   "scorer": {
     "age_years": "Unternehmen ist seit {years} Jahren auf dem Markt.",

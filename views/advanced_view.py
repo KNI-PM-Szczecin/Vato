@@ -165,6 +165,9 @@ class AdvancedView(ctk.CTkFrame):
             PopupMessage(t("popup.warning"), t("advanced.no_source"), status="warning")
             return
             
+        from elevenlabs_integration.tts import stop_tts
+        stop_tts()
+            
         dest = self.save_input.get().strip()
         import os
         import datetime

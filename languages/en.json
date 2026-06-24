@@ -86,7 +86,8 @@
     "tts_voice": "TTS Voice (ElevenLabs)",
     "tts_test": "I am the speech model {name}",
     "no_api_key": "Missing ELEVENLABS_API_KEY in environment variables.",
-    "invalid_api_key": "Invalid API key (Invalid API key)."
+    "invalid_api_key": "Invalid API key (Invalid API key).",
+    "tts_busy": "Playback is in progress. Please wait until the previous recording finishes."
   },
   "email": {
     "subject": "KYC Verification Report - {nip}",
@@ -109,7 +110,8 @@
     "api_error": "API Error",
     "send_error": "Sending Error",
     "ok_btn": "Understood",
-    "copy_error": "Copy error details"
+    "copy_error": "Copy error details",
+    "tts_loading": "Loading ElevenLabs..."
   },
   "scorer": {
     "age_years": "Company has been on the market for {years} years.",

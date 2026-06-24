@@ -46,6 +46,11 @@ class HistoryView(ctk.CTkFrame):
         PopupMessage(t("popup.success"), t("history.cleared_msg"), status="success")
         
     def load_history(self):
+        # Cancel any ongoing load tasks if we hit refresh rapidly
+        if hasattr(self, "_load_task") and self._load_task:
+            self.after_cancel(self._load_task)
+            self._load_task = None
+
         # Remove existing cards
         for card in self.cards:
             card.destroy()
@@ -59,35 +64,45 @@ class HistoryView(ctk.CTkFrame):
             self.cards.append(empty_lbl)
             return
             
-        for i, entry in enumerate(entries):
-            etype = entry.get("type", "UNKNOWN")
-            value = entry.get("value", "")
-            timestamp = entry.get("timestamp", "")
+        self._render_entry_step(entries, 0)
+
+    def _render_entry_step(self, entries, index):
+        if not self.winfo_exists() or index >= len(entries):
+            self._load_task = None
+            return
             
-            # Translate type
-            if etype == "NIP":
-                type_str = t("history.type_nip")
-            elif etype == "BATCH":
-                type_str = t("history.type_batch")
-            else:
-                type_str = etype
-                
-            card = ctk.CTkFrame(self.scroll_area, corner_radius=8, fg_color=("gray85", "gray25"))
-            card.grid(row=i, column=0, sticky="ew", padx=10, pady=(10, 0))
-            card.grid_columnconfigure(1, weight=1)
+        entry = entries[index]
+        etype = entry.get("type", "UNKNOWN")
+        value = entry.get("value", "")
+        timestamp = entry.get("timestamp", "")
+        
+        # Translate type
+        if etype == "NIP":
+            type_str = t("history.type_nip")
+        elif etype == "BATCH":
+            type_str = t("history.type_batch")
+        else:
+            type_str = etype
             
-            time_lbl = ctk.CTkLabel(card, text=timestamp, font=ctk.CTkFont(size=12, weight="bold"), text_color=("gray30", "gray70"))
-            time_lbl.grid(row=0, column=0, padx=15, pady=10, sticky="w")
-            
-            import os
-            display_value = os.path.basename(value) if etype == "BATCH" else value
-            val_lbl = ctk.CTkLabel(card, text=f"{type_str}: {display_value}", font=ctk.CTkFont(size=14))
-            val_lbl.grid(row=0, column=1, padx=15, pady=10, sticky="w")
-            
-            reuse_btn = ctk.CTkButton(card, text=t("history.reuse_btn"), width=80, height=28, command=lambda e=etype, v=value: self.reuse_entry(e, v))
-            reuse_btn.grid(row=0, column=2, padx=15, pady=10, sticky="e")
-            
-            self.cards.append(card)
+        card = ctk.CTkFrame(self.scroll_area, corner_radius=8, fg_color=("gray85", "gray25"))
+        card.grid(row=index, column=0, sticky="ew", padx=10, pady=(10, 0))
+        card.grid_columnconfigure(1, weight=1)
+        
+        time_lbl = ctk.CTkLabel(card, text=timestamp, font=ctk.CTkFont(size=12, weight="bold"), text_color=("gray30", "gray70"))
+        time_lbl.grid(row=0, column=0, padx=15, pady=10, sticky="w")
+        
+        import os
+        display_value = os.path.basename(value) if etype == "BATCH" else value
+        val_lbl = ctk.CTkLabel(card, text=f"{type_str}: {display_value}", font=ctk.CTkFont(size=14))
+        val_lbl.grid(row=0, column=1, padx=15, pady=10, sticky="w")
+        
+        reuse_btn = ctk.CTkButton(card, text=t("history.reuse_btn"), width=80, height=28, command=lambda e=etype, v=value: self.reuse_entry(e, v))
+        reuse_btn.grid(row=0, column=2, padx=15, pady=10, sticky="e")
+        
+        self.cards.append(card)
+        
+        # load next card after 20ms to make it sequential and smooth
+        self._load_task = self.after(20, lambda: self._render_entry_step(entries, index + 1))
 
     def reuse_entry(self, etype, value):
         app = self.winfo_toplevel()

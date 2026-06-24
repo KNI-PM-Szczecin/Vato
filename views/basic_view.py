@@ -126,6 +126,26 @@ class BasicView(ctk.CTkFrame):
         self.clipboard_append(log_content)
         PopupMessage(t("popup.copied_title"), t("advanced.copied"), status="success")
 
+    def validate(self):
+        nip = self.nip_input.get().strip()
+        method = self.method_selector.get()
+        
+        if not nip:
+            PopupMessage(t("popup.error"), t("basic.error_empty"), status="error")
+            return
+            
+        from elevenlabs_integration.tts import stop_tts
+        stop_tts()
+            
+        self.validation_btn.configure(state="disabled", text=t("basic.validating_btn"))
+        self.pdf_report_btn.configure(state="disabled")
+        self.append_result(t("basic.validating", nip=nip))
+
+        from services.history_manager import HistoryManager
+        HistoryManager().add_entry("NIP", nip)
+
+        threading.Thread(target=self._async_validate, args=(nip, method), daemon=True).start()
+
     def execute_quick_validation(self):
         nip = self.nip_input.get().strip()
         method = self.method_selector.get()
@@ -133,6 +153,9 @@ class BasicView(ctk.CTkFrame):
         if not nip:
             PopupMessage(t("popup.error"), t("basic.error_empty", method=method), status="error")
             return
+            
+        from elevenlabs_integration.tts import stop_tts
+        stop_tts()
             
         self.quick_validate_btn.configure(state="disabled", text=t("basic.processing"))
         self.pdf_report_btn.configure(state="disabled")
@@ -192,13 +215,16 @@ class BasicView(ctk.CTkFrame):
             def _show_validate_result():
                 self.append_result(full_report)
                 self.update_idletasks()
-                PopupMessage(t("popup.success"), quick_report, status=status_color)
 
                 app = self.winfo_toplevel()
-                if hasattr(app, 'is_muted') and not getattr(app, 'is_muted', True):
+                is_muted = hasattr(app, 'is_muted') and getattr(app, 'is_muted', True)
+
+                p = PopupMessage(t("popup.success"), quick_report, status=status_color, tts_progress=not is_muted)
+
+                if not is_muted:
                     from elevenlabs_integration.tts import play_text
                     from services.tts_report import build_tts_report
-                    play_text(build_tts_report(cdata))
+                    play_text(build_tts_report(cdata), on_start=p.stop_tts_progress)
 
             self.after(0, _show_validate_result)
         except Exception as e:
