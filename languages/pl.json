@@ -206,6 +206,14 @@
     "no_score": "BRAK KOŃCOWEGO WYNIKU",
     "unknown": "NIEZNANY",
     "last_post": "Ostatni wpis {days} dni temu",
-    "domain_age_fmt": "{days} dni (~{years} lat)"
+    "domain_age_fmt": "{days} dni (~{years} lat)",
+    "status_active": "Aktywna",
+    "status_suspended": "Zawieszona",
+    "status_closed": "Wykreślona",
+    "status_liquidation": "W likwidacji",
+    "status_bankruptcy": "W upadłości",
+    "vat_active": "Czynny podatnik VAT",
+    "vat_exempt": "Zwolniony z VAT",
+    "vat_removed": "Wykreślony z rejestru VAT"
   }
 }

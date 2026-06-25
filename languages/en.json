@@ -206,6 +206,14 @@
     "no_score": "NO FINAL SCORE",
     "unknown": "UNKNOWN",
     "last_post": "Last post {days} days ago",
-    "domain_age_fmt": "{days} days (~{years} years)"
+    "domain_age_fmt": "{days} days (~{years} years)",
+    "status_active": "Active",
+    "status_suspended": "Suspended",
+    "status_closed": "Closed",
+    "status_liquidation": "In Liquidation",
+    "status_bankruptcy": "Bankruptcy",
+    "vat_active": "Active VAT Payer",
+    "vat_exempt": "VAT Exempt",
+    "vat_removed": "Removed from VAT Register"
   }
 }

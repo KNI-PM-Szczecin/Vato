@@ -44,6 +44,34 @@ def strip_diacritics(text: str) -> str:
 
 strip_polish_chars = strip_diacritics
 
+def _translate_legal_status(raw: str) -> str:
+    upper = (raw or "").strip().upper()
+    if upper in ("ACTIVE", "AKTYWNA", "AKTYWNY"):
+        return t("pdf.status_active")
+    if upper in ("SUSPENDED", "ZAWIESZONA", "ZAWIESZONY"):
+        return t("pdf.status_suspended")
+    if upper in ("CLOSED", "WYKREŚLONA", "WYKREŚLONY", "WYKRESLONA", "WYKRESLONY"):
+        return t("pdf.status_closed")
+    if upper == "LIQUIDATION" or "LIKWIDACJ" in upper:
+        return t("pdf.status_liquidation")
+    if upper == "BANKRUPTCY" or "UPADŁ" in upper or "UPADL" in upper:
+        return t("pdf.status_bankruptcy")
+    if upper in ("NIEZNANY", "UNKNOWN", ""):
+        return t("pdf.unknown")
+    return raw
+
+def _translate_vat_status(raw: str) -> str:
+    upper = (raw or "").strip().upper()
+    if "CZYNNY" in upper or upper == "ACTIVE":
+        return t("pdf.vat_active")
+    if "ZWOLNIONY" in upper or upper == "EXEMPT":
+        return t("pdf.vat_exempt")
+    if "WYKREŚL" in upper or "WYKRESL" in upper or "REMOVED" in upper or "NIEZAREJESTR" in upper:
+        return t("pdf.vat_removed")
+    if upper in ("NIEZNANY", "UNKNOWN", ""):
+        return t("pdf.unknown")
+    return raw
+
 def P(text: str, style: ParagraphStyle) -> Paragraph:
     """Wrapper to automatically strip diacritics before rendering a Paragraph."""
     return Paragraph(strip_diacritics(text), style)
@@ -125,8 +153,8 @@ def export_results_pdf(results, path: str) -> None:
 
         story.append(P(t("pdf.entity_audit", name=name, nip=nip, country=country), h2_style))
 
-        status_prawny = getattr(contractor, 'status_prawny', t("pdf.unknown"))
-        status_vat = getattr(contractor, 'status_vat', t("pdf.unknown"))
+        status_prawny = _translate_legal_status(getattr(contractor, 'status_prawny', ''))
+        status_vat = _translate_vat_status(getattr(contractor, 'status_vat', ''))
         whitelist = t("pdf.yes") if getattr(contractor, 'rachunek_na_bialej_liscie', False) else t("pdf.no")
         cap = getattr(contractor, 'share_capital', None)
         share_capital = f"{cap:,.2f} PLN" if cap is not None else t("pdf.no_data")

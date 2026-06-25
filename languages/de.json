@@ -204,7 +204,14 @@
     "no_score": "KEIN ENDWERT",
     "unknown": "UNBEKANNT",
     "last_post": "Letzter Beitrag vor {days} Tagen",
-    "domain_age_fmt": "{days} Tage (~{years} Jahre)"
-    
+    "domain_age_fmt": "{days} Tage (~{years} Jahre)",
+    "status_active": "Aktiv",
+    "status_suspended": "Ausgesetzt",
+    "status_closed": "Geschlossen",
+    "status_liquidation": "In Liquidation",
+    "status_bankruptcy": "Insolvenz",
+    "vat_active": "Aktiver MwSt-Zahler",
+    "vat_exempt": "MwSt befreit",
+    "vat_removed": "Aus MwSt-Register gestrichen"
   }
 }
