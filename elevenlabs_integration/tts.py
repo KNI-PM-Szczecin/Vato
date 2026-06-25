@@ -174,11 +174,15 @@ def play_text(text: str, override_voice: str = None, show_errors: bool = False, 
             import sys
             args = ["ffplay", "-autoexit", "-", "-nodisp", "-af", f"volume={vol_multiplier}"]
             try:
+                popen_kwargs = {}
+                if sys.platform.startswith("win"):
+                    popen_kwargs["creationflags"] = 0x08000000
                 proc = subprocess.Popen(
                     args=args,
                     stdout=subprocess.PIPE,
                     stdin=subprocess.PIPE,
                     stderr=subprocess.PIPE,
+                    **popen_kwargs,
                 )
                 _current_tts_process = proc
                 proc.communicate(input=audio_data)
