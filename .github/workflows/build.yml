@@ -5,9 +5,29 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create GitHub Release (only if version is new)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      app_name: ${{ steps.extract.outputs.name }}
+      app_version: ${{ steps.extract.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract from manifest
+        id: extract
+        run: |
+          echo "name=$(jq -r .name manifest.json)" >> $GITHUB_OUTPUT
+          echo "version=$(jq -r .version manifest.json)" >> $GITHUB_OUTPUT
+
   build-windows:
+    needs: setup
     runs-on: windows-latest
     environment: env
 
@@ -47,15 +67,16 @@ jobs:
 
       - name: Build application
         run: |
-          pyinstaller --noconfirm --onefile --windowed --name Vato --icon=static/vato_v_white.ico --add-data "manifest.json;." --add-data ".env;." --add-data "languages;languages/" --add-data "static;static/" --collect-all customtkinter main.py
+          pyinstaller --noconfirm --onefile --windowed --name "${{ needs.setup.outputs.app_name }}-${{ needs.setup.outputs.app_version }}-Windows" --icon=static/vato_v_white.ico --add-data "manifest.json;." --add-data ".env;." --add-data "languages;languages/" --add-data "static;static/" --collect-all customtkinter main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Vato-Windows-Portable
+          name: ${{ needs.setup.outputs.app_name }}-${{ needs.setup.outputs.app_version }}-Windows
           path: dist/*.exe
 
   build-macos:
+    needs: setup
     runs-on: macos-latest
     environment: env
 
@@ -94,14 +115,65 @@ jobs:
 
       - name: Build application
         run: |
-          pyinstaller --noconfirm --onefile --windowed --name Vato --icon=static/vato_v_white.ico --add-data "manifest.json:." --add-data ".env:." --add-data "languages:languages/" --add-data "static:static/" --collect-all customtkinter main.py
-          python -c "import plistlib; p='dist/Vato.app/Contents/Info.plist'; pl=plistlib.load(open(p, 'rb')); pl['LSUIElement']=True; plistlib.dump(pl, open(p, 'wb'))"
-          codesign --force --deep -s - dist/Vato.app
+          pyinstaller --noconfirm --onefile --windowed --name "${{ needs.setup.outputs.app_name }}-${{ needs.setup.outputs.app_version }}-macOS" --icon=static/vato_v_white.ico --add-data "manifest.json:." --add-data ".env:." --add-data "languages:languages/" --add-data "static:static/" --collect-all customtkinter main.py
+          python -c "import plistlib; p='dist/${{ needs.setup.outputs.app_name }}-${{ needs.setup.outputs.app_version }}-macOS.app/Contents/Info.plist'; pl=plistlib.load(open(p, 'rb')); pl['LSUIElement']=True; plistlib.dump(pl, open(p, 'wb'))"
+          codesign --force --deep -s - "dist/${{ needs.setup.outputs.app_name }}-${{ needs.setup.outputs.app_version }}-macOS.app"
           cd dist
-          zip -ry Vato-macOS.zip Vato.app
+          zip -ry "${{ needs.setup.outputs.app_name }}-${{ needs.setup.outputs.app_version }}-macOS.zip" "${{ needs.setup.outputs.app_name }}-${{ needs.setup.outputs.app_version }}-macOS.app"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Vato-macOS-App
-          path: dist/Vato-macOS.zip
+          name: ${{ needs.setup.outputs.app_name }}-${{ needs.setup.outputs.app_version }}-macOS
+          path: dist/*.zip
+
+  release:
+    needs: [setup, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.create_release == 'true' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          if git rev-parse "v${{ needs.setup.outputs.app_version }}" >/dev/null 2>&1; then
+            echo "Tag v${{ needs.setup.outputs.app_version }} already exists!"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Tag v${{ needs.setup.outputs.app_version }} does not exist."
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download Windows Artifact
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.setup.outputs.app_name }}-${{ needs.setup.outputs.app_version }}-Windows
+          path: dist-win
+
+      - name: Download macOS Artifact
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.setup.outputs.app_name }}-${{ needs.setup.outputs.app_version }}-macOS
+          path: dist-mac
+
+      - name: Create Release
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.setup.outputs.app_version }}
+          name: Release v${{ needs.setup.outputs.app_version }}
+          draft: false
+          prerelease: false
+          files: |
+            dist-win/*.exe
+            dist-mac/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
