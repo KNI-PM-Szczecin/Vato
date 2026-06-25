@@ -1,6 +1,6 @@
 import os
 from datetime import date
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
@@ -80,7 +80,7 @@ def export_results_pdf(results, path: str) -> None:
     """Generates a professional, detailed PDF report of verified contractors."""
     doc = SimpleDocTemplate(
         path,
-        pagesize=letter,
+        pagesize=A4,
         rightMargin=40,
         leftMargin=40,
         topMargin=40,
@@ -108,7 +108,7 @@ def export_results_pdf(results, path: str) -> None:
         parent=styles['Normal'],
         fontSize=10,
         textColor=colors.HexColor("#718096"),
-        spaceAfter=20
+        spaceAfter=12
     )
 
     h2_style = ParagraphStyle(
@@ -116,8 +116,8 @@ def export_results_pdf(results, path: str) -> None:
         parent=styles['Heading2'],
         fontSize=14,
         textColor=PRIMARY_COLOR,
-        spaceBefore=15,
-        spaceAfter=10,
+        spaceBefore=8,
+        spaceAfter=6,
         keepWithNext=True
     )
 
@@ -237,7 +237,7 @@ def export_results_pdf(results, path: str) -> None:
             ]
         ]
 
-        tbl = Table(data_table, colWidths=[120, 140, 120, 140])
+        tbl = Table(data_table, colWidths=[130, 130, 130, 125])
         tbl.setStyle(TableStyle([
             ('SPAN', (0, 0), (1, 0)),
             ('SPAN', (2, 0), (3, 0)),
@@ -248,14 +248,14 @@ def export_results_pdf(results, path: str) -> None:
             ('ROWBACKGROUNDS', (0, 1), (3, 5), [colors.white, BG_LIGHT]),
             ('INNERGRID', (0, 0), (3, 6), 0.5, BORDER_COLOR),
             ('BOX', (0, 0), (3, 6), 1, PRIMARY_COLOR),
-            ('TOPPADDING', (0, 0), (3, 6), 6),
-            ('BOTTOMPADDING', (0, 0), (3, 6), 6),
+            ('TOPPADDING', (0, 0), (3, 6), 4),
+            ('BOTTOMPADDING', (0, 0), (3, 6), 4),
             ('LEFTPADDING', (0, 0), (3, 6), 8),
             ('VALIGN', (0, 0), (3, 6), 'MIDDLE'),
         ]))
 
         story.append(tbl)
-        story.append(Spacer(1, 10))
+        story.append(Spacer(1, 6))
 
         if justifications:
             just_header_style = ParagraphStyle(
@@ -270,9 +270,9 @@ def export_results_pdf(results, path: str) -> None:
                 parent=body_style,
                 leftIndent=12,
                 firstLineIndent=-12,
-                spaceAfter=4,
-                fontSize=10,
-                leading=15,
+                spaceAfter=2,
+                fontSize=9,
+                leading=13,
                 textColor=TEXT_COLOR,
             )
             box_rows = [[P(f"<b>{t('email.analysis_title')}</b>", just_header_style)]]
