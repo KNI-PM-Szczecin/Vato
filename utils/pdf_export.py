@@ -100,7 +100,8 @@ def export_results_pdf(results, path: str) -> None:
         parent=styles['Heading1'],
         fontSize=22,
         textColor=PRIMARY_COLOR,
-        spaceAfter=5
+        spaceAfter=5,
+        rightIndent=80
     )
 
     subtitle_style = ParagraphStyle(
@@ -108,7 +109,8 @@ def export_results_pdf(results, path: str) -> None:
         parent=styles['Normal'],
         fontSize=10,
         textColor=colors.HexColor("#718096"),
-        spaceAfter=12
+        spaceAfter=12,
+        rightIndent=80
     )
 
     h2_style = ParagraphStyle(
