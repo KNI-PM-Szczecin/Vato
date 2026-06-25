@@ -41,6 +41,7 @@ class ContractorData(BaseModel):
     suspicious_domain: bool | None = None
     news_found: bool | None = None
     news_anomalies: list | None = None
+    disabled_apis: list = []
     scoring: Any = None 
 
 

@@ -28,8 +28,16 @@ class HistoryView(ctk.CTkFrame):
         
         # Scrollable Area for History Cards
         self.scroll_area = ctk.CTkScrollableFrame(self, corner_radius=10)
-        self.scroll_area.grid(row=1, column=0, sticky="nsew")
         self.scroll_area.grid_columnconfigure(0, weight=1)
+        
+        # Loading Frame with Progress Bar
+        self.loading_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.loading_frame.grid_columnconfigure(0, weight=1)
+        self.loading_frame.grid_rowconfigure(0, weight=1)
+        self.loading_lbl = ctk.CTkLabel(self.loading_frame, text=t("basic.processing") if hasattr(t, '__call__') else "Trwa ładowanie...", font=ctk.CTkFont(size=14))
+        self.loading_lbl.grid(row=0, column=0, pady=(60, 10), sticky="s")
+        self.progress_bar = ctk.CTkProgressBar(self.loading_frame, width=300)
+        self.progress_bar.grid(row=1, column=0, pady=(0, 60), sticky="n")
         
         self.cards = []
         self.load_history()
@@ -51,6 +59,10 @@ class HistoryView(ctk.CTkFrame):
             self.after_cancel(self._load_task)
             self._load_task = None
 
+        self.scroll_area.grid_remove()
+        self.loading_frame.grid(row=1, column=0, sticky="nsew")
+        self.progress_bar.set(0)
+
         # Remove existing cards
         for card in self.cards:
             card.destroy()
@@ -59,6 +71,8 @@ class HistoryView(ctk.CTkFrame):
         entries = self.history_mgr.get_history()
         
         if not entries:
+            self.loading_frame.grid_remove()
+            self.scroll_area.grid(row=1, column=0, sticky="nsew")
             empty_lbl = ctk.CTkLabel(self.scroll_area, text=t("history.empty"), text_color="gray")
             empty_lbl.grid(row=0, column=0, pady=40)
             self.cards.append(empty_lbl)
@@ -67,9 +81,17 @@ class HistoryView(ctk.CTkFrame):
         self._render_entry_step(entries, 0)
 
     def _render_entry_step(self, entries, index):
-        if not self.winfo_exists() or index >= len(entries):
+        if not self.winfo_exists():
             self._load_task = None
             return
+            
+        if index >= len(entries):
+            self.loading_frame.grid_remove()
+            self.scroll_area.grid(row=1, column=0, sticky="nsew")
+            self._load_task = None
+            return
+            
+        self.progress_bar.set(index / len(entries))
             
         entry = entries[index]
         etype = entry.get("type", "UNKNOWN")

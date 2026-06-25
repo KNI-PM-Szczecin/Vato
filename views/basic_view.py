@@ -16,7 +16,7 @@ try:
 except OSError:
     pass
 
-class BasicView(ctk.CTkFrame):
+class BasicView(ctk.CTkScrollableFrame):
     def __init__(self, master):
         super().__init__(master, fg_color="transparent")
         
@@ -33,13 +33,21 @@ class BasicView(ctk.CTkFrame):
 
         self.method_selector = ctk.CTkComboBox(self.search_card, values=["NIP", "REGON", "KRS"], width=120, state="readonly")
         self.method_selector.set("NIP")
-        self.method_selector.grid(row=1, column=0, padx=(20, 10), pady=(0, 20), sticky="w")
+        self.method_selector.grid(row=1, column=0, padx=(20, 10), pady=(0, 5), sticky="w")
 
         self.nip_input = ctk.CTkEntry(self.search_card, placeholder_text=t("basic.placeholder_nip"), height=32)
-        self.nip_input.grid(row=1, column=1, padx=(0, 20), pady=(0, 20), sticky="ew")
+        self.nip_input.grid(row=1, column=1, padx=(0, 20), pady=(0, 5), sticky="ew")
+        
+        self.api_toggle_btn = ctk.CTkButton(self.search_card, text=t("basic.api_options") if hasattr(t, '__call__') else "Opcje API (rozwiń)", fg_color="transparent", text_color=("blue", "lightblue"), hover_color=("gray80", "gray30"), command=self.toggle_api_options)
+        self.api_toggle_btn.grid(row=2, column=0, columnspan=2, sticky="w", padx=15, pady=(0, 5))
+        
+        from views.api_options import ApiOptionsFrame
+        self.api_options_frame = ApiOptionsFrame(self.search_card)
+        
+        self.api_options_visible = False
 
         self.buttons_frame = ctk.CTkFrame(self.search_card, fg_color="transparent")
-        self.buttons_frame.grid(row=2, column=0, columnspan=2, padx=20, pady=(0, 20), sticky="ew")
+        self.buttons_frame.grid(row=4, column=0, columnspan=2, padx=20, pady=(15, 20), sticky="ew")
         self.buttons_frame.grid_columnconfigure(0, weight=1)
         self.buttons_frame.grid_columnconfigure(1, weight=1)
 
@@ -68,7 +76,7 @@ class BasicView(ctk.CTkFrame):
         self.email_hint.grid(row=2, column=0, sticky="w", padx=20, pady=(0, 15))
 
         self.generate_report_btn = ctk.CTkButton(
-            self.report_card, text=t("basic.generate_report"), height=35, fg_color="#2E7D32", hover_color="#1B5E20",
+            self.report_card, text=t("basic.generate_report"), height=35,
             command=self.execute_report_generation
         )
         self.generate_report_btn.is_action_btn = True
@@ -95,9 +103,22 @@ class BasicView(ctk.CTkFrame):
         self.result_text.insert("0.0", t("basic.waiting_for_data"))
         self.result_text.configure(state="disabled")
 
+    def toggle_api_options(self):
+        if self.api_options_visible:
+            self.api_options_frame.grid_remove()
+            self.api_options_visible = False
+        else:
+            self.api_options_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=20, pady=(0, 10))
+            self.api_options_visible = True
+
     def update_texts(self):
         self.search_title.configure(text=t("basic.title"))
         self.nip_input.configure(placeholder_text=t("basic.placeholder_nip"))
+        if hasattr(self, 'api_toggle_btn'):
+            self.api_toggle_btn.configure(text=t("basic.api_options"))
+        if hasattr(self, 'api_options_frame'):
+            self.api_options_frame.update_texts()
+            
         self.quick_validate_btn.configure(text=t("basic.quick_validate"))
         self.pdf_report_btn.configure(text=t("basic.pdf_report"))
         
@@ -144,7 +165,8 @@ class BasicView(ctk.CTkFrame):
         from services.history_manager import HistoryManager
         HistoryManager().add_entry("NIP", nip)
 
-        threading.Thread(target=self._async_validate, args=(nip, method), daemon=True).start()
+        api_config = self.api_options_frame.get_config()
+        threading.Thread(target=self._async_validate, args=(nip, method, api_config), daemon=True).start()
 
     def execute_quick_validation(self):
         nip = self.nip_input.get().strip()
@@ -164,7 +186,8 @@ class BasicView(ctk.CTkFrame):
         from services.history_manager import HistoryManager
         HistoryManager().add_entry("NIP", nip)
 
-        threading.Thread(target=self._async_validate, args=(nip, method), daemon=True).start()
+        api_config = self.api_options_frame.get_config()
+        threading.Thread(target=self._async_validate, args=(nip, method, api_config), daemon=True).start()
 
     def execute_pdf_report(self):
         nip = self.nip_input.get().strip()
@@ -186,14 +209,15 @@ class BasicView(ctk.CTkFrame):
         from services.history_manager import HistoryManager
         HistoryManager().add_entry("NIP", nip)
 
-        threading.Thread(target=self._async_pdf_report, args=(nip, method, target_file), daemon=True).start()
+        api_config = self.api_options_frame.get_config()
+        threading.Thread(target=self._async_pdf_report, args=(nip, method, target_file, api_config), daemon=True).start()
 
-    def _async_validate(self, nip, method):
+    def _async_validate(self, nip, method, api_config):
         try:
             import asyncio
             from services.verification_manager import verify_contractor
             
-            cdata = asyncio.run(verify_contractor(nip))
+            cdata = asyncio.run(verify_contractor(nip, api_config=api_config))
             score_data = cdata.scoring
             
             total = score_data['total_score']
@@ -238,13 +262,13 @@ class BasicView(ctk.CTkFrame):
             self.after(0, lambda: self.quick_validate_btn.configure(state="normal", text=t("basic.quick_validate")))
             self.after(0, lambda: self.pdf_report_btn.configure(state="normal"))
 
-    def _async_pdf_report(self, nip, method, target_file):
+    def _async_pdf_report(self, nip, method, target_file, api_config):
         try:
             import asyncio
             from services.verification_manager import verify_contractor
             from utils.pdf_export import export_results_pdf
 
-            cdata = asyncio.run(verify_contractor(nip))
+            cdata = asyncio.run(verify_contractor(nip, api_config=api_config))
 
             export_results_pdf([cdata], target_file)
 
@@ -318,14 +342,15 @@ class BasicView(ctk.CTkFrame):
         self.generate_report_btn.configure(state="disabled", text=t("basic.generating"))
         self.append_result(t("basic.generating_log", email=user_email))
         
-        threading.Thread(target=self._async_report, args=(nip, user_email), daemon=True).start()
+        api_config = self.api_options_frame.get_config()
+        threading.Thread(target=self._async_report, args=(nip, user_email, api_config), daemon=True).start()
 
-    def _async_report(self, nip, user_email):
+    def _async_report(self, nip, user_email, api_config):
         try:
             import asyncio
             from services.verification_manager import verify_contractor
 
-            cdata = asyncio.run(verify_contractor(nip))
+            cdata = asyncio.run(verify_contractor(nip, api_config=api_config))
             score_data = cdata.scoring
 
             total_score = score_data['total_score']

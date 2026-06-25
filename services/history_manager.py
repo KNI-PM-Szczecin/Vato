@@ -54,8 +54,19 @@ class HistoryManager:
         
         history.insert(0, entry) # prepend
         
-        # limit history to 100 entries to prevent bloat
-        history = history[:100]
+        from services.config_manager import ConfigManager
+        config_mgr = ConfigManager()
+        try:
+            limit_val = config_mgr.get("history_limit", "50")
+            if limit_val in ("None", "Bez limitu", "Unlimited", "Unbegrenzt", ""):
+                limit = None
+            else:
+                limit = int(limit_val)
+        except Exception:
+            limit = 50
+            
+        if limit is not None and limit > 0:
+            history = history[:limit]
         
         with open(self.history_file, 'w', encoding='utf-8') as f:
             json.dump(history, f, indent=2, ensure_ascii=False)
@@ -63,7 +74,25 @@ class HistoryManager:
     def get_history(self):
         try:
             with open(self.history_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                history = json.load(f)
+                
+            from services.config_manager import ConfigManager
+            config_mgr = ConfigManager()
+            try:
+                limit_val = config_mgr.get("history_limit", "50")
+                if limit_val in ("None", "Bez limitu", "Unlimited", "Unbegrenzt", ""):
+                    limit = None
+                else:
+                    limit = int(limit_val)
+            except Exception:
+                limit = 50
+                
+            if limit is not None and limit > 0 and len(history) > limit:
+                history = history[:limit]
+                with open(self.history_file, 'w', encoding='utf-8') as fw:
+                    json.dump(history, fw, indent=2, ensure_ascii=False)
+                    
+            return history
         except Exception:
             return []
             

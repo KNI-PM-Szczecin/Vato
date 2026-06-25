@@ -13,6 +13,7 @@ if sys.platform.startswith("win"):
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+
 from views.basic_view import BasicView
 from views.advanced_view import AdvancedView
 from views.settings_view import SettingsView
@@ -24,8 +25,8 @@ class App(ctk.CTk):
         super().__init__(className="Vato")
 
         self.title(t("app.title"))
-        self.geometry("1000x900")
-        self.minsize(900, 800)
+        self.geometry("800x650")
+        self.minsize(600, 500)
         
         ctk.set_appearance_mode("System")
         ctk.set_default_color_theme("blue")
@@ -110,6 +111,7 @@ class App(ctk.CTk):
         set_language(saved_lang)
 
         self.accent_color = self.config_manager.get("accent_color", "#3B8ED0")
+        self._update_theme_manager(self.accent_color)
         
         try:
             self.sun_image = ctk.CTkImage(Image.open(os.path.join(base_path, "static", "sun.png")), size=(24, 24))
@@ -276,6 +278,7 @@ class App(ctk.CTk):
     def apply_accent_color(self, hex_color):
         self.accent_color = hex_color
         self.config_manager.set("accent_color", hex_color)
+        self._update_theme_manager(hex_color)
         
         import os
         from PIL import Image
@@ -302,34 +305,75 @@ class App(ctk.CTk):
     def _update_widget_colors(self, widget, hex_color):
         import customtkinter as ctk
         
+        def darken(hex_c, factor):
+            hex_c = hex_c.lstrip('#')
+            if len(hex_c) == 6:
+                r, g, b = tuple(int(hex_c[i:i+2], 16) for i in (0, 2, 4))
+                return f"#{max(0, int(r * factor)):02x}{max(0, int(g * factor)):02x}{max(0, int(b * factor)):02x}"
+            return "#" + hex_c
+            
+        hover_c = darken(hex_color, 0.85)
+
         if hasattr(widget, "is_color_preset_btn") and widget.is_color_preset_btn:
             pass
         elif isinstance(widget, ctk.CTkButton):
             current_color = widget.cget("fg_color")
             if current_color != "transparent" and current_color != ["transparent", "transparent"]:
-                def darken(hex_c, factor):
-                    hex_c = hex_c.lstrip('#')
-                    if len(hex_c) == 6:
-                        r, g, b = tuple(int(hex_c[i:i+2], 16) for i in (0, 2, 4))
-                        return f"#{max(0, int(r * factor)):02x}{max(0, int(g * factor)):02x}{max(0, int(b * factor)):02x}"
-                    return "#" + hex_c
-
                 if hasattr(widget, "is_action_btn") and widget.is_action_btn:
                     widget.configure(fg_color=darken(hex_color, 0.75), hover_color=darken(hex_color, 0.55))
                 else:
-                    widget.configure(fg_color=hex_color, hover_color=darken(hex_color, 0.85))
+                    widget.configure(fg_color=hex_color, hover_color=hover_c)
                 
         elif isinstance(widget, ctk.CTkProgressBar):
             widget.configure(progress_color=hex_color)
             
         elif isinstance(widget, ctk.CTkCheckBox):
-            widget.configure(fg_color=hex_color, hover_color=hex_color)
+            widget.configure(fg_color=hex_color, hover_color=hover_c)
             
         elif isinstance(widget, ctk.CTkTabview):
-            widget.configure(segmented_button_selected_color=hex_color, segmented_button_selected_hover_color=hex_color)
+            widget.configure(segmented_button_selected_color=hex_color, segmented_button_selected_hover_color=hover_c)
             
+        elif isinstance(widget, ctk.CTkComboBox) or isinstance(widget, ctk.CTkOptionMenu):
+            widget.configure(button_color=hex_color, button_hover_color=hover_c)
+            if isinstance(widget, ctk.CTkOptionMenu):
+                widget.configure(fg_color=hex_color)
+                
+        elif isinstance(widget, ctk.CTkSlider):
+            widget.configure(button_color=hex_color, button_hover_color=hover_c, progress_color=hex_color)
+            
+        elif isinstance(widget, ctk.CTkSwitch):
+            widget.configure(progress_color=hex_color)
+
         for child in widget.winfo_children():
             self._update_widget_colors(child, hex_color)
+
+    def _update_theme_manager(self, hex_color):
+        import customtkinter as ctk
+        def darken(hex_c, factor):
+            hex_c = hex_c.lstrip('#')
+            if len(hex_c) == 6:
+                r, g, b = tuple(int(hex_c[i:i+2], 16) for i in (0, 2, 4))
+                return f"#{max(0, int(r * factor)):02x}{max(0, int(g * factor)):02x}{max(0, int(b * factor)):02x}"
+            return "#" + hex_c
+            
+        hover_c = darken(hex_color, 0.85)
+        
+        ctk.ThemeManager.theme["CTkButton"]["fg_color"] = [hex_color, hex_color]
+        ctk.ThemeManager.theme["CTkButton"]["hover_color"] = [hover_c, hover_c]
+        ctk.ThemeManager.theme["CTkCheckBox"]["fg_color"] = [hex_color, hex_color]
+        ctk.ThemeManager.theme["CTkCheckBox"]["hover_color"] = [hover_c, hover_c]
+        ctk.ThemeManager.theme["CTkProgressBar"]["progress_color"] = [hex_color, hex_color]
+        ctk.ThemeManager.theme["CTkSlider"]["button_color"] = [hex_color, hex_color]
+        ctk.ThemeManager.theme["CTkSlider"]["button_hover_color"] = [hover_c, hover_c]
+        ctk.ThemeManager.theme["CTkSlider"]["progress_color"] = [hex_color, hex_color]
+        ctk.ThemeManager.theme["CTkSwitch"]["progress_color"] = [hex_color, hex_color]
+        ctk.ThemeManager.theme["CTkOptionMenu"]["fg_color"] = [hex_color, hex_color]
+        ctk.ThemeManager.theme["CTkOptionMenu"]["button_color"] = [hex_color, hex_color]
+        ctk.ThemeManager.theme["CTkOptionMenu"]["button_hover_color"] = [hover_c, hover_c]
+        ctk.ThemeManager.theme["CTkComboBox"]["button_color"] = [hex_color, hex_color]
+        ctk.ThemeManager.theme["CTkComboBox"]["button_hover_color"] = [hover_c, hover_c]
+        ctk.ThemeManager.theme["CTkSegmentedButton"]["selected_color"] = [hex_color, hex_color]
+        ctk.ThemeManager.theme["CTkSegmentedButton"]["selected_hover_color"] = [hover_c, hover_c]
 
 if __name__ == "__main__":
     app = App()

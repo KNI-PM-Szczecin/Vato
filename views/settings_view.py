@@ -3,7 +3,7 @@ import re
 from views.popup import PopupMessage
 from services.i18n import t, set_language, get_language
 
-class SettingsView(ctk.CTkFrame):
+class SettingsView(ctk.CTkScrollableFrame):
     def __init__(self, master):
         super().__init__(master, fg_color="transparent")
         self.grid_columnconfigure(0, weight=1)
@@ -175,6 +175,33 @@ class SettingsView(ctk.CTkFrame):
         
         info_text = f"{app_name} v{app_version}-{commit_hash}\n\n{app_desc}"
         
+        # --- Card: History Limit ---
+        self.history_card = ctk.CTkFrame(self, corner_radius=10)
+        self.history_card.grid(row=4, column=0, sticky="ew", padx=20, pady=(10, 15))
+        self.history_card.grid_columnconfigure(0, weight=1)
+        
+        self.history_title = ctk.CTkLabel(self.history_card, text=t("settings.history_limit"), font=ctk.CTkFont(size=16, weight="bold"))
+        self.history_title.grid(row=0, column=0, sticky="w", padx=20, pady=(15, 5))
+        
+        self.history_warning = ctk.CTkLabel(self.history_card, text=t("settings.history_warning"), font=ctk.CTkFont(size=11), text_color="gray")
+        self.history_warning.grid(row=1, column=0, sticky="w", padx=20, pady=(0, 10))
+        
+        self.history_selector = ctk.CTkComboBox(
+            self.history_card, 
+            values=["10", "50", "100", "200", t("settings.unlimited")],
+            command=self.change_history_limit,
+            width=200
+        )
+        
+        app = self.winfo_toplevel()
+        if hasattr(app, "config_manager"):
+            current_limit = str(app.config_manager.get("history_limit", "50"))
+            if current_limit in ("0", "None", "Bez limitu", "Unlimited", "Unbegrenzt", ""):
+                current_limit = t("settings.unlimited")
+            self.history_selector.set(current_limit)
+        
+        self.history_selector.grid(row=2, column=0, sticky="w", padx=20, pady=(0, 15))
+
         self.info_label = ctk.CTkLabel(
             self, 
             text=info_text, 
@@ -183,8 +210,8 @@ class SettingsView(ctk.CTkFrame):
             justify="center",
             wraplength=450
         )
-        self.info_label.grid(row=4, column=0, pady=(40, 20), padx=20, sticky="s")
-        self.grid_rowconfigure(4, weight=1)
+        self.info_label.grid(row=5, column=0, pady=(40, 20), padx=20, sticky="s")
+        self.grid_rowconfigure(5, weight=1)
 
     def _on_volume_change(self, val):
         self.volume_label.configure(text=f"{int(val*100)}%")
@@ -245,6 +272,12 @@ class SettingsView(ctk.CTkFrame):
         if hasattr(app, "config_manager"):
             app.config_manager.set("tts_voice", choice)
 
+    def change_history_limit(self, choice):
+        app = self.winfo_toplevel()
+        if hasattr(app, "config_manager"):
+            val = choice if choice != t("settings.unlimited") else "None"
+            app.config_manager.set("history_limit", val)
+
     def update_texts(self):
         self.title_label.configure(text=t("settings.title"))
         self.lang_title.configure(text=t("settings.language"))
@@ -252,6 +285,14 @@ class SettingsView(ctk.CTkFrame):
         self.custom_color_label.configure(text=t("settings.custom_color"))
         self.apply_color_btn.configure(text=t("settings.apply"))
         self.voice_title.configure(text=t("settings.tts_voice"))
+        if hasattr(self, 'history_title'):
+            self.history_title.configure(text=t("settings.history_limit"))
+            self.history_warning.configure(text=t("settings.history_warning"))
+            unlimited_str = t("settings.unlimited")
+            current_val = self.history_selector.get()
+            self.history_selector.configure(values=["10", "50", "100", "200", unlimited_str])
+            if current_val not in ("10", "50", "100", "200"):
+                self.history_selector.set(unlimited_str)
         
         if hasattr(self, 'app_desc_data'):
             current_lang = get_language()

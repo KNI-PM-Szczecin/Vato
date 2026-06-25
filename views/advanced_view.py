@@ -8,7 +8,7 @@ from services.i18n import t
 from utils.excel_export import export_results
 import os
 
-class AdvancedView(ctk.CTkFrame):
+class AdvancedView(ctk.CTkScrollableFrame):
     def __init__(self, master):
         super().__init__(master, fg_color="transparent")
 
@@ -41,7 +41,15 @@ class AdvancedView(ctk.CTkFrame):
         self.save_input.grid(row=2, column=1, sticky="ew", padx=(0, 10), pady=(0, 20))
 
         self.save_btn = ctk.CTkButton(self.files_card, text=t("advanced.choose_btn"), width=100, height=32, command=self.handle_file_save)
-        self.save_btn.grid(row=2, column=2, sticky="e", padx=(0, 20), pady=(0, 20))
+        self.save_btn.grid(row=2, column=2, sticky="e", padx=(0, 20), pady=(0, 15))
+
+        from views.api_options import ApiOptionsFrame
+        
+        self.api_toggle_btn = ctk.CTkButton(self.files_card, text=t("basic.api_options") if hasattr(t, '__call__') else "Opcje API (rozwiń)", fg_color="transparent", text_color=("blue", "lightblue"), hover_color=("gray80", "gray30"), command=self.toggle_api_options)
+        self.api_toggle_btn.grid(row=3, column=0, columnspan=3, sticky="w", padx=15, pady=(0, 5))
+        
+        self.api_options_frame = ApiOptionsFrame(self.files_card)
+        self.api_options_visible = False
 
         # --- Card 2: Actions ---
         self.actions_card = ctk.CTkFrame(self, corner_radius=10)
@@ -83,7 +91,7 @@ class AdvancedView(ctk.CTkFrame):
         self.quick_validate_btn.grid(row=4, column=0, sticky="ew", padx=20, pady=(0, 10))
 
         self.generate_report_btn = ctk.CTkButton(
-            self.actions_card, text=t("advanced.validate_save_send"), height=35, fg_color="#2E7D32", hover_color="#1B5E20",
+            self.actions_card, text=t("advanced.validate_save_send"), height=35,
             command=self.execute_report_generation
         )
         self.generate_report_btn.is_action_btn = True
@@ -105,7 +113,7 @@ class AdvancedView(ctk.CTkFrame):
         self.copy_log_btn = ctk.CTkButton(self.log_header_frame, text=t("advanced.copy_btn"), width=80, height=28, command=self.copy_log)
         self.copy_log_btn.grid(row=0, column=1, sticky="e")
 
-        self.log_text = ctk.CTkTextbox(self.status_card, wrap="word", corner_radius=8, height=500)
+        self.log_text = ctk.CTkTextbox(self.status_card, wrap="word", corner_radius=8, height=150)
         self.log_text.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
         self.log_text.insert("0.0", t("advanced.waiting"))
         self.log_text.configure(state="disabled")
@@ -130,6 +138,21 @@ class AdvancedView(ctk.CTkFrame):
         
         self.status_title.configure(text=t("advanced.log_title"))
         self.copy_log_btn.configure(text=t("advanced.copy_btn"))
+        if hasattr(self, 'api_toggle_btn'):
+            btn_text = t("basic.api_options_hide") if self.api_options_visible else t("basic.api_options")
+            self.api_toggle_btn.configure(text=btn_text)
+        if hasattr(self, 'api_options_frame'):
+            self.api_options_frame.update_texts()
+
+    def toggle_api_options(self):
+        if self.api_options_visible:
+            self.api_options_frame.grid_remove()
+            self.api_toggle_btn.configure(text=t("basic.api_options") if hasattr(t, '__call__') else "Opcje API (rozwiń)")
+            self.api_options_visible = False
+        else:
+            self.api_options_frame.grid(row=4, column=0, columnspan=3, sticky="ew", padx=20, pady=(0, 15))
+            self.api_toggle_btn.configure(text=t("basic.api_options_hide") if hasattr(t, '__call__') else "Opcje API (zwiń)")
+            self.api_options_visible = True
 
     def append_log(self, text):
         import datetime
@@ -189,9 +212,10 @@ class AdvancedView(ctk.CTkFrame):
         import os
         HistoryManager().add_entry("BATCH", src)
         
-        threading.Thread(target=self._simulate_processing, args=(dest, mock), daemon=True).start()
+        api_config = self.api_options_frame.get_config()
+        threading.Thread(target=self._simulate_processing, args=(dest, mock, None, api_config), daemon=True).start()
 
-    def _simulate_processing(self, dest_path=None, mock_mode=False, user_email=None):
+    def _simulate_processing(self, dest_path=None, mock_mode=False, user_email=None, api_config=None):
         import os
         import platform
         import subprocess
@@ -245,7 +269,7 @@ class AdvancedView(ctk.CTkFrame):
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
                     try:
-                        cdata = loop.run_until_complete(verify_contractor(nip))
+                        cdata = loop.run_until_complete(verify_contractor(nip, api_config=api_config))
                     finally:
                         loop.close()
 
@@ -423,4 +447,5 @@ class AdvancedView(ctk.CTkFrame):
         import os
         HistoryManager().add_entry("BATCH", os.path.basename(src))
 
-        threading.Thread(target=self._simulate_processing, args=(dest, mock, user_email), daemon=True).start()
+        api_config = self.api_options_frame.get_config()
+        threading.Thread(target=self._simulate_processing, args=(dest, mock, user_email, api_config), daemon=True).start()
