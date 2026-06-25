@@ -10,11 +10,14 @@ STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
 LOGO_PATH = os.path.join(STATIC_DIR, "vato_black.png")
 
 def _draw_logo(canvas, doc):
+    """Draws the company logo in the top-right corner of the page with the correct aspect ratio."""
     if not os.path.exists(LOGO_PATH):
         return
-    logo_w, logo_h = 70, 28
+    logo_w = 140
+    # Keep the aspect ratio of the image (2048 x 1102) to prevent stretching and huge empty bounding box
+    logo_h = int(logo_w * 1102 / 2048)  # ~75 pt
     x = doc.pagesize[0] - doc.rightMargin - logo_w
-    y = doc.pagesize[1] - doc.topMargin - logo_h + 10
+    y = doc.pagesize[1] - doc.topMargin - logo_h
     canvas.saveState()
     canvas.drawImage(LOGO_PATH, x, y, width=logo_w, height=logo_h, preserveAspectRatio=True, mask="auto")
     canvas.restoreState()
@@ -101,7 +104,7 @@ def export_results_pdf(results, path: str) -> None:
         fontSize=22,
         textColor=PRIMARY_COLOR,
         spaceAfter=5,
-        rightIndent=80
+        rightIndent=160  # Protects the logo area from horizontal overlap
     )
 
     subtitle_style = ParagraphStyle(
@@ -110,7 +113,7 @@ def export_results_pdf(results, path: str) -> None:
         fontSize=10,
         textColor=colors.HexColor("#718096"),
         spaceAfter=12,
-        rightIndent=80
+        rightIndent=160  # Protects the logo area from horizontal overlap
     )
 
     h2_style = ParagraphStyle(
@@ -141,7 +144,7 @@ def export_results_pdf(results, path: str) -> None:
 
     story.append(P(t("pdf.title"), title_style))
     story.append(P(t("pdf.subtitle", date=date.today().isoformat()), subtitle_style))
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 40))  # Increased spacing to create a vertical protection zone below the logo
 
     for idx, contractor in enumerate(results):
         if idx > 0:
@@ -308,4 +311,4 @@ def export_results_pdf(results, path: str) -> None:
         ]))
         story.append(line_table)
 
-    doc.build(story, onFirstPage=_draw_logo, onLaterPages=_draw_logo)
+    doc.build(story, onFirstPage=_draw_logo, onLaterPages=lambda canvas, doc: None)
