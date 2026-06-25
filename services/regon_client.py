@@ -62,7 +62,7 @@ class RegonClient:
             resp = await client.post(REGON_WSDL, content=body, headers=headers, timeout=10)
             resp.raise_for_status()
 
-            # Typ podmiotu: P → spółka (KRS), F/LP/LF → osoba fizyczna (CEIDG)
+            # Entity type: P → company (KRS), F/LP/LF → natural person (CEIDG)
             match = re.search(r"<Typ>(.*?)</Typ>", resp.text)
             typ = match.group(1) if match else ""
             

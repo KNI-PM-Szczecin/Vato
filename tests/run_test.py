@@ -7,12 +7,12 @@ from services.regon_client import RegonClient
 regon_client_instance = RegonClient()
 
 def print_scoring_dashboard(contractor: ContractorData):
-    """Generuje widok wyników identyczny z pierwotną wersją systemu."""
+    """Generates a results view identical to the original version of the system."""
     sc = contractor.scoring or {}
     total_score = sc.get("total_score", 0)
     risk_level = sc.get("risk_level", "NIEZNANY")
     
-    # Pobranie ocen cząstkowych ze słownika scoringu
+    # Retrieving partial scores from the scoring dictionary
     age = sc.get("age_score", 0)
     reg = sc.get("reg_score", 0)
     cap = sc.get("cap_score", 0)
@@ -60,13 +60,13 @@ def print_scoring_dashboard(contractor: ContractorData):
 
 
 async def verify_contractor(raw_nip: str, default_country: str = "PL") -> ContractorData:
-    # 1. Parsowanie wejścia
+    # 1. Input parsing
     country_code, clean_nip = utils.parse_tax_id(raw_nip, default_country)
     
     print(f"\nRozpoczyna weryfikację: Kraj={country_code}, Numer={clean_nip}")
     contractor = ContractorData(nip=clean_nip, country_code=country_code)
 
-    # 2. Ścieżka POLSKA
+    # 2. POLISH path
     if country_code == "PL":
         print("Identyfikacja typu dzialanosci w REGON ...")
         try:
@@ -86,7 +86,7 @@ async def verify_contractor(raw_nip: str, default_country: str = "PL") -> Contra
         vat_fields = await vat_client.fetch_vat_data(clean_nip)
         contractor = contractor.model_copy(update=vat_fields)
 
-    # 3. Ścieżka UNIJNA (VIES)
+    # 3. EU path (VIES)
     else:
         print(f"Wykryto kraj UE ({country_code}). Pomijam polski REGON/KRS, odpytuję VIES...")
         if hasattr(vies_client, 'enrich'):
@@ -102,7 +102,7 @@ async def main():
     # Test for a German company
     firma_de = await verify_contractor("DE129273398")
     
-    # Wyświetlenie odtworzonego widoku
+    # Displaying the recreated view
     print_scoring_dashboard(firma_de)
 
 

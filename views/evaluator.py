@@ -6,7 +6,7 @@ def evaluate_contractor(data: ContractorData) -> ScoreResult:
     result = ScoreResult(nip=data.nip)
     today = date.today()
 
-    # 1. Status prawny
+    # 1. Legal status
     if data.data_rozpoczecia:
         miesiace = (today.year - data.data_rozpoczecia.year) * 12 + today.month - data.data_rozpoczecia.month
     else:
@@ -28,7 +28,7 @@ def evaluate_contractor(data: ContractorData) -> ScoreResult:
     else:
         result.szczegoly.append("Status (0 pkt): Brak danych o statusie.")
 
-    # 2. Doświadczenie
+    # 2. Experience
     if data.czeste_zmiany_formy:
         result.doswiadczenie = -5
         result.szczegoly.append("Doświadczenie (-5 pkt): Częste zmiany formy prawnej.")
@@ -43,7 +43,7 @@ def evaluate_contractor(data: ContractorData) -> ScoreResult:
         else:
             result.szczegoly.append("Doświadczenie (0 pkt): Firma istnieje krócej niż 2 lata.")
 
-    # 3. Podatki VAT / Biała Lista
+    # 3. VAT / Whitelist
     if data.status_vat == "CZYNNY" and data.rachunek_na_bialej_liscie:
         result.podatki_vat = 10
         result.szczegoly.append("Podatki (+10 pkt): Czynny podatnik VAT, rachunek na Białej Liście.")
@@ -57,7 +57,7 @@ def evaluate_contractor(data: ContractorData) -> ScoreResult:
     else:
         result.szczegoly.append("Podatki (0 pkt): Brak danych VAT.")
 
-    # 4. Stabilność
+    # 4. Stability
     if data.wymiana_zarzadu_ostatnie_3msc:
         result.stabilnosc = -10
         result.szczegoly.append("Stabilność (-10 pkt): Pełna wymiana zarządu i adresu w ostatnich 3 msc — WYSOKIE RYZYKO.")

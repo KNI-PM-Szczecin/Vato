@@ -11,7 +11,7 @@ class SettingsView(ctk.CTkFrame):
         self.title_label = ctk.CTkLabel(self, text=t("settings.title"), font=ctk.CTkFont(size=24, weight="bold"))
         self.title_label.grid(row=0, column=0, sticky="w", padx=20, pady=(20, 10))
 
-        # --- Card: Język ---
+        # --- Card: Language ---
         self.lang_card = ctk.CTkFrame(self, corner_radius=10)
         self.lang_card.grid(row=1, column=0, sticky="ew", padx=20, pady=(10, 15))
         self.lang_card.grid_columnconfigure(0, weight=1)
@@ -29,7 +29,7 @@ class SettingsView(ctk.CTkFrame):
         self.lang_selector.set(current)
         self.lang_selector.grid(row=1, column=0, sticky="w", padx=20, pady=(0, 15))
 
-        # --- Card: Kolor akcentu ---
+        # --- Card: Accent color ---
         self.accent_card = ctk.CTkFrame(self, corner_radius=10)
         self.accent_card.grid(row=2, column=0, sticky="ew", padx=20, pady=10)
         self.accent_card.grid_columnconfigure(0, weight=1)
@@ -70,7 +70,7 @@ class SettingsView(ctk.CTkFrame):
         self.apply_color_btn = ctk.CTkButton(self.custom_color_frame, text=t("settings.apply"), width=80, command=self.apply_custom_color)
         self.apply_color_btn.grid(row=0, column=2)
 
-        # --- Card: Głos TTS ---
+        # --- Card: TTS Voice ---
         self.voice_card = ctk.CTkFrame(self, corner_radius=10)
         self.voice_card.grid(row=3, column=0, sticky="ew", padx=20, pady=(10, 15))
         self.voice_card.grid_columnconfigure(0, weight=1)
@@ -219,11 +219,11 @@ class SettingsView(ctk.CTkFrame):
         app = self.winfo_toplevel()
         if hasattr(app, "config_manager"):
             app.config_manager.set("language", lang)
-        # Nie odświeżamy już opcji głosowych przy zmianie języka, 
-        # ponieważ lista głosów jest wspólna i niezależna od języka UI.
+        # We no longer refresh voice options on language change, 
+        # because the voice list is shared and independent of the UI language.
 
     def _update_voice_options(self, lang=None):
-        # Ignorujemy argument lang, używamy jednej wspólnej listy głosów
+        # We ignore the lang argument, we use one shared list of voices
         available_voices = self._voices_en 
         if not available_voices:
             available_voices = self._voices_pl

@@ -58,7 +58,7 @@ async def enrich(data: ContractorData) -> ContractorData:
         status=t("scorer.status_pos") if age_score == 10 else t("scorer.status_warn")
     ))
     
-    # Status Rejestrowy & Wiarygodnosc
+    # Registry Status & Credibility
     status_vat = str(getattr(data, 'status_vat', 'NIEZNANY') or 'NIEZNANY').upper()
     legal_status = (getattr(data, 'status_prawny', 'NIEZNANY') or 'NIEZNANY').upper()
     on_whitelist = getattr(data, 'rachunek_na_bialej_liscie', False)
@@ -114,7 +114,7 @@ async def enrich(data: ContractorData) -> ContractorData:
         status=t("scorer.status_pos") if credibility_score == 15 else t("scorer.status_warn")
     ))
     
-    # Kapital firmy
+    # Company capital
     if country_code != "PL":
         # Neutral values — no access to foreign registries
         # If VIES confirmed -> slightly higher score, else -> more cautious
@@ -167,7 +167,7 @@ async def enrich(data: ContractorData) -> ContractorData:
         status=t("scorer.status_pos") if sanctions_score == 15 else t("scorer.status_warn")
     ))
     
-    # Wiarygodność cyfrowa (Website scraping, SSL, Age, RSS, News Presence)
+    # Digital credibility (Website scraping, SSL, Age, RSS, News Presence)
     web_score = 0
     website_url = getattr(data, 'website_url', None)
     
