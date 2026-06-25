@@ -205,5 +205,6 @@
     "unknown": "UNBEKANNT",
     "last_post": "Letzter Beitrag vor {days} Tagen",
     "domain_age_fmt": "{days} Tage (~{years} Jahre)"
+    
   }
 }
