@@ -4,7 +4,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
-from urllib.parse import urlparse
+from services.i18n import t
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
 LOGO_PATH = os.path.join(STATIC_DIR, "vato_black.png")
@@ -19,8 +19,8 @@ def _draw_logo(canvas, doc):
     canvas.drawImage(LOGO_PATH, x, y, width=logo_w, height=logo_h, preserveAspectRatio=True, mask="auto")
     canvas.restoreState()
 
-def strip_polish_chars(text: str) -> str:
-    """Replaces Polish characters with their ASCII equivalents to prevent rendering issues in ReportLab."""
+def strip_diacritics(text: str) -> str:
+    """Replaces diacritic characters (Polish, German) with ASCII equivalents for ReportLab rendering."""
     if not isinstance(text, str):
         return text
     mapping = {
@@ -32,18 +32,24 @@ def strip_polish_chars(text: str) -> str:
         'ó': 'o', 'Ó': 'O',
         'ś': 's', 'Ś': 'S',
         'ź': 'z', 'Ź': 'Z',
-        'ż': 'z', 'Ż': 'Z'
+        'ż': 'z', 'Ż': 'Z',
+        'ä': 'a', 'Ä': 'A',
+        'ö': 'o', 'Ö': 'O',
+        'ü': 'u', 'Ü': 'U',
+        'ß': 'ss',
     }
-    for pol, eng in mapping.items():
-        text = text.replace(pol, eng)
+    for char, replacement in mapping.items():
+        text = text.replace(char, replacement)
     return text
 
+strip_polish_chars = strip_diacritics
+
 def P(text: str, style: ParagraphStyle) -> Paragraph:
-    """Wrapper to automatically strip Polish characters before rendering a Paragraph."""
-    return Paragraph(strip_polish_chars(text), style)
+    """Wrapper to automatically strip diacritics before rendering a Paragraph."""
+    return Paragraph(strip_diacritics(text), style)
 
 def export_results_pdf(results, path: str) -> None:
-    """Generates a professional, detailed PDF report of verified contractors, free of Polish characters."""
+    """Generates a professional, detailed PDF report of verified contractors."""
     doc = SimpleDocTemplate(
         path,
         pagesize=letter,
@@ -52,17 +58,15 @@ def export_results_pdf(results, path: str) -> None:
         topMargin=40,
         bottomMargin=40
     )
-    
+
     styles = getSampleStyleSheet()
-    
-    # Custom color palette (sleek dark blue theme)
+
     PRIMARY_COLOR = colors.HexColor("#1A365D")
     SECONDARY_COLOR = colors.HexColor("#2B6CB0")
     TEXT_COLOR = colors.HexColor("#2D3748")
     BG_LIGHT = colors.HexColor("#F7FAFC")
     BORDER_COLOR = colors.HexColor("#E2E8F0")
-    
-    # Custom styles
+
     title_style = ParagraphStyle(
         'DocTitle',
         parent=styles['Heading1'],
@@ -70,7 +74,7 @@ def export_results_pdf(results, path: str) -> None:
         textColor=PRIMARY_COLOR,
         spaceAfter=5
     )
-    
+
     subtitle_style = ParagraphStyle(
         'DocSubTitle',
         parent=styles['Normal'],
@@ -78,7 +82,7 @@ def export_results_pdf(results, path: str) -> None:
         textColor=colors.HexColor("#718096"),
         spaceAfter=20
     )
-    
+
     h2_style = ParagraphStyle(
         'SectionHeader',
         parent=styles['Heading2'],
@@ -88,7 +92,7 @@ def export_results_pdf(results, path: str) -> None:
         spaceAfter=10,
         keepWithNext=True
     )
-    
+
     body_style = ParagraphStyle(
         'BodyText',
         parent=styles['Normal'],
@@ -96,81 +100,68 @@ def export_results_pdf(results, path: str) -> None:
         leading=13,
         textColor=TEXT_COLOR
     )
-    
+
     bold_body_style = ParagraphStyle(
         'BoldBodyText',
         parent=body_style,
         fontName='Helvetica-Bold'
     )
-    
-    justification_style = ParagraphStyle(
-        'JustificationText',
-        parent=body_style,
-        leftIndent=15,
-        firstLineIndent=-10,
-        spaceAfter=4
-    )
-    
+
     story = []
-    
-    # Title & Metadata (Cleaned of Polish characters)
-    story.append(P("Vato - Raport Weryfikacji Wiarygodnosci Kontrahentow", title_style))
-    story.append(P(f"Wygenerowano dnia: {date.today().isoformat()} | Narzedzie audytorskie Vato", subtitle_style))
+
+    story.append(P(t("pdf.title"), title_style))
+    story.append(P(t("pdf.subtitle", date=date.today().isoformat()), subtitle_style))
     story.append(Spacer(1, 10))
-    
+
     for idx, contractor in enumerate(results):
         if idx > 0:
             story.append(Spacer(1, 20))
-            
+
         has_scoring_dict = hasattr(contractor, 'scoring') and isinstance(contractor.scoring, dict)
-        
+
         nip = getattr(contractor, 'nip', '---')
         name = getattr(contractor, 'legal_name', '---') if hasattr(contractor, 'legal_name') else '---'
         country = getattr(contractor, 'country_code', 'PL') if hasattr(contractor, 'country_code') else 'PL'
-        
-        # Section Heading
-        story.append(P(f"Audyt podmiotu: {name} (NIP: {nip}, Kraj: {country})", h2_style))
-        
-        # 1. Gather Registry Data
-        status_prawny = getattr(contractor, 'status_prawny', 'NIEZNANY')
-        status_vat = getattr(contractor, 'status_vat', 'NIEZNANY')
-        whitelist = "TAK" if getattr(contractor, 'rachunek_na_bialej_liscie', False) else "NIE"
+
+        story.append(P(t("pdf.entity_audit", name=name, nip=nip, country=country), h2_style))
+
+        status_prawny = getattr(contractor, 'status_prawny', t("pdf.unknown"))
+        status_vat = getattr(contractor, 'status_vat', t("pdf.unknown"))
+        whitelist = t("pdf.yes") if getattr(contractor, 'rachunek_na_bialej_liscie', False) else t("pdf.no")
         cap = getattr(contractor, 'share_capital', None)
-        share_capital = f"{cap:,.2f} PLN" if cap is not None else "BRAK DANYCH"
-        bailiff = "TAK" if getattr(contractor, 'has_bailiff_proceedings', False) else "NIE"
+        share_capital = f"{cap:,.2f} PLN" if cap is not None else t("pdf.no_data")
+        bailiff = t("pdf.yes") if getattr(contractor, 'has_bailiff_proceedings', False) else t("pdf.no")
         if getattr(contractor, 'has_bailiff_proceedings', None) is None:
-            bailiff = "BRAK DANYCH"
-            
-        # 2. Gather Digital Footprint (Scrapper_1)
-        website = getattr(contractor, 'website_url', None) or "NIE ODNALEZIONO"
-        ssl = "BEZPIECZNE (HTTPS)" if getattr(contractor, 'ssl_valid', False) else "BRAK SZYFROWANIA / BLAD SSL"
-        
+            bailiff = t("pdf.no_data")
+
+        website = getattr(contractor, 'website_url', None) or t("pdf.not_found")
+        ssl = t("pdf.ssl_ok") if getattr(contractor, 'ssl_valid', False) else t("pdf.ssl_bad")
+
         age = getattr(contractor, 'domain_age_days', None)
-        domain_age = f"{age} dni (~{round(age/365, 1)} lat)" if age is not None else "BRAK DANYCH"
-        
+        domain_age = t("pdf.domain_age_fmt", days=age, years=round(age / 365, 1)) if age is not None else t("pdf.no_data")
+
         posts = getattr(contractor, 'days_since_last_post', None)
-        activity = f"Ostatni wpis {posts} dni temu" if posts is not None else "BRAK AKTYWNOSCI / BRAK RSS"
-        
-        nip_match = "TAK (Potwierdzono)" if getattr(contractor, 'website_nip_matched', False) else "NIE (Brak zgodnosci)"
-        
-        # 3. Gather Scoring Data
+        activity = t("pdf.last_post", days=posts) if posts is not None else t("pdf.no_activity")
+
+        nip_match = t("pdf.nip_match_yes") if getattr(contractor, 'website_nip_matched', False) else t("pdf.nip_match_no")
+
         if has_scoring_dict:
             total_score_val = contractor.scoring.get('total_score', 0)
             score = f"{total_score_val} / 100"
-            risk = contractor.scoring.get('risk_level', 'NIEZNANE')
+            risk = contractor.scoring.get('risk_level', t("pdf.unknown"))
             color_code = contractor.scoring.get('color_code', 'yellow')
             justifications = contractor.scoring.get('justifications', [])
         elif hasattr(contractor, 'total'):
             total_score_val = contractor.total
             score = f"{total_score_val} / 40"
             risk = getattr(contractor, 'risk_level', None)
-            risk = risk.value if risk else 'NIEZNANE'
+            risk = risk.value if risk else t("pdf.unknown")
             color_code = 'yellow'
             justifications = getattr(contractor, 'details', [])
         else:
             total_score_val = 0
-            score = "BRAK KONCOWEGO WYNIKU"
-            risk = "NIEZNANE"
+            score = t("pdf.no_score")
+            risk = t("pdf.unknown")
             color_code = 'yellow'
             justifications = []
 
@@ -187,41 +178,39 @@ def export_results_pdf(results, path: str) -> None:
         score_style = ParagraphStyle('ScoreCell', parent=bold_body_style, textColor=score_fg, fontSize=10)
         header_cell_style = ParagraphStyle('HeaderCell', parent=bold_body_style, textColor=colors.white, fontSize=9)
 
-        # Table of details
         data_table = [
             [
-                P("<b>Dane rejestrowe (KRS/CEIDG)</b>", header_cell_style), "",
-                P("<b>Wiarygodnosc Cyfrowa (WWW/SSL)</b>", header_cell_style), ""
+                P(f"<b>{t('pdf.registry_header')}</b>", header_cell_style), "",
+                P(f"<b>{t('pdf.digital_header')}</b>", header_cell_style), ""
             ],
             [
-                P("Status prawny:", body_style), P(status_prawny, body_style),
-                P("Strona internetowa:", body_style), P(website, body_style)
+                P(t("pdf.legal_status"), body_style), P(status_prawny, body_style),
+                P(t("pdf.website"), body_style), P(website, body_style)
             ],
             [
-                P("Status VAT:", body_style), P(status_vat, body_style),
-                P("Szyfrowanie SSL/TLS:", body_style), P(ssl, body_style)
+                P(t("pdf.vat_status"), body_style), P(status_vat, body_style),
+                P(t("pdf.ssl"), body_style), P(ssl, body_style)
             ],
             [
-                P("Biala Lista bankow:", body_style), P(whitelist, body_style),
-                P("Wiek domeny:", body_style), P(domain_age, body_style)
+                P(t("pdf.whitelist"), body_style), P(whitelist, body_style),
+                P(t("pdf.domain_age"), body_style), P(domain_age, body_style)
             ],
             [
-                P("Kapital zakladowy:", body_style), P(share_capital, body_style),
-                P("Aktywnosc publikacji:", body_style), P(activity, body_style)
+                P(t("pdf.share_capital"), body_style), P(share_capital, body_style),
+                P(t("pdf.activity"), body_style), P(activity, body_style)
             ],
             [
-                P("Postep. komornicze:", body_style), P(bailiff, body_style),
-                P("Zgodnosc NIP na stronie:", body_style), P(nip_match, body_style)
+                P(t("pdf.bailiff"), body_style), P(bailiff, body_style),
+                P(t("pdf.nip_match"), body_style), P(nip_match, body_style)
             ],
             [
-                P("<b>Wynik Scoringu:</b>", score_style), P(f"<b>{score} pkt</b>", score_style),
-                P("<b>Rekomendacja ryzyka:</b>", score_style), P(f"<b>{risk}</b>", score_style)
+                P(f"<b>{t('pdf.score')}</b>", score_style), P(f"<b>{score}</b>", score_style),
+                P(f"<b>{t('pdf.risk')}</b>", score_style), P(f"<b>{risk}</b>", score_style)
             ]
         ]
 
-        # Table styling
-        t = Table(data_table, colWidths=[120, 140, 120, 140])
-        t.setStyle(TableStyle([
+        tbl = Table(data_table, colWidths=[120, 140, 120, 140])
+        tbl.setStyle(TableStyle([
             ('SPAN', (0, 0), (1, 0)),
             ('SPAN', (2, 0), (3, 0)),
             ('BACKGROUND', (0, 0), (3, 0), PRIMARY_COLOR),
@@ -236,11 +225,10 @@ def export_results_pdf(results, path: str) -> None:
             ('LEFTPADDING', (0, 0), (3, 6), 8),
             ('VALIGN', (0, 0), (3, 6), 'MIDDLE'),
         ]))
-        
-        story.append(t)
+
+        story.append(tbl)
         story.append(Spacer(1, 10))
-        
-        # 4. Print Justifications
+
         if justifications:
             just_header_style = ParagraphStyle(
                 'JustHeader',
@@ -259,9 +247,9 @@ def export_results_pdf(results, path: str) -> None:
                 leading=15,
                 textColor=TEXT_COLOR,
             )
-            box_rows = [[P("<b>Uzasadnienie wyniku (Analiza ryzyka)</b>", just_header_style)]]
+            box_rows = [[P(f"<b>{t('email.analysis_title')}</b>", just_header_style)]]
             for j in justifications:
-                box_rows.append([P(f"• {strip_polish_chars(j)}", just_item_style)])
+                box_rows.append([P(f"• {j}", just_item_style)])
 
             box_table = Table(box_rows, colWidths=[520])
             box_table.setStyle(TableStyle([
@@ -280,8 +268,7 @@ def export_results_pdf(results, path: str) -> None:
                 ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, BG_LIGHT]),
             ]))
             story.append(box_table)
-                
-        # Draw line separator between contractors
+
         story.append(Spacer(1, 10))
         line_table = Table([[""]], colWidths=[520])
         line_table.setStyle(TableStyle([
@@ -290,5 +277,5 @@ def export_results_pdf(results, path: str) -> None:
             ('TOPPADDING', (0, 0), (-1, -1), 0)
         ]))
         story.append(line_table)
-        
+
     doc.build(story, onFirstPage=_draw_logo, onLaterPages=_draw_logo)
