@@ -82,10 +82,14 @@ jobs:
 
       - name: Build application
         run: |
-          pyinstaller --noconfirm --onefile --windowed --name Vato --add-data ".env:." --add-data "languages:languages/" --add-data "static:static/" --collect-all customtkinter main.py
+          pyinstaller --noconfirm --onefile --windowed --name Vato --icon=static/vato_v_white.ico --add-data ".env:." --add-data "languages:languages/" --add-data "static:static/" --collect-all customtkinter main.py
+          python -c "import plistlib; p='dist/Vato.app/Contents/Info.plist'; pl=plistlib.load(open(p, 'rb')); pl['LSUIElement']=True; plistlib.dump(pl, open(p, 'wb'))"
+          codesign --force --deep -s - dist/Vato.app
+          cd dist
+          zip -ry Vato-macOS.zip Vato.app
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: Vato-macOS-App
-          path: dist/*.app
+          path: dist/Vato-macOS.zip

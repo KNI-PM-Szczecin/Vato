@@ -207,6 +207,21 @@ while ($player.playState -eq 3) {{ Start-Sleep -Milliseconds 100 }}
                         os.remove(tmp_path)
                     except:
                         pass
+                elif sys.platform == "darwin":
+                    import tempfile
+                    import os
+                    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+                        f.write(audio_data)
+                        tmp_path = f.name
+                    
+                    vol = max(0.0, min(10.0, vol_multiplier))
+                    proc = subprocess.Popen(["afplay", "-v", str(vol), tmp_path])
+                    _current_tts_process = proc
+                    proc.wait()
+                    try:
+                        os.remove(tmp_path)
+                    except:
+                        pass
                 else:
                     raise
             finally:
