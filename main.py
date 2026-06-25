@@ -1,21 +1,13 @@
 import os
 import sys
 from dotenv import load_dotenv
-try:
-    import env_vars  
-except ImportError:
-    pass             
 
-if getattr(sys, 'frozen', False):
-    base_path = sys._MEIPASS
-    # Look for .env next to the .exe first, then inside the bundle
-    exe_dir = os.path.dirname(sys.executable)
-    env_path = os.path.join(exe_dir, '.env')
-    if not os.path.exists(env_path):
-        env_path = os.path.join(base_path, '.env')
+if hasattr(sys, '_MEIPASS'):
+    # Uruchomienie jako skompilowana aplikacja (PyInstaller)
+    env_path = os.path.join(sys._MEIPASS, '.env')
 else:
-    base_path = os.path.dirname(os.path.abspath(__file__))
-    env_path = os.path.join(base_path, '.env')
+    # Uruchomienie bezpośrednio jako zwykły skrypt pythona w lokalnym IDE
+    env_path = '.env'
 
 load_dotenv(dotenv_path=env_path)
 

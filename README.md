@@ -15,8 +15,17 @@
 
 | | |
 |:---:|:---:|
-| <img src=".github/screenshots/base_dark.png" width="400" alt="Main View - Dark Mode" /> | <img src=".github/screenshots/base_white.png" width="400" alt="Main View - Light Mode" /> |
-| <img src=".github/screenshots/adv_dark.png" width="400" alt="Batch view - Dark Mode" /> | <img src=".github/screenshots/adv_white.png" width="400" alt="Batch view - Light Mode" /> |
+| <img src=".github/screenshots/base_black.png" width="400" alt="Main View - Dark Mode" /> | <img src=".github/screenshots/base_white.png" width="400" alt="Main View - Light Mode" /> |
+| <img src=".github/screenshots/batch_black.png" width="400" alt="Batch View - Dark Mode" /> | <img src=".github/screenshots/batch_white.png" width="400" alt="Batch View - Light Mode" /> |
+| <img src=".github/screenshots/hist_black.png" width="400" alt="History View - Dark Mode" /> | <img src=".github/screenshots/hist_white.png" width="400" alt="History View - Light Mode" /> |
+| <img src=".github/screenshots/settings.png" width="400" alt="Settings" /> | <img src=".github/screenshots/alt_color.png" width="400" alt="Alternative Color" /> |
+
+---
+
+## 🌍 Multilingual Support
+
+Vato is ultimately designed to provide **full native support** for **Polish (PL), English (EN), and German (DE)**. 
+Every single feature, interface element, and background process is intended to work flawlessly across all supported languages. Furthermore, all exported summaries and reports (both PDF and Excel) are meant to be **generated and emailed entirely in the currently selected language**.
 
 ---
 
@@ -46,6 +55,14 @@ Vato dynamically evaluates contractors by connecting to multiple reliable data s
 
 ---
 
+## 👥 Team & Responsibilities
+
+* **Mateusz:** Core scoring algorithm and external API integrations.
+* **Paweł:** Email services, PDF generation, and results layout for batch processing.
+* **Aleksy:** GUI implementation, ElevenLabs integration, and foundations for batch processing.
+
+---
+
 <div align="center">
-  <i>Created with 💻 and ☕ during Hackathon Morski 2026.</i>
+  <i>Created with 💻 and ☕ by Mateusz, Paweł, and Aleksy during Hackathon Morski 2026.</i>
 </div>
