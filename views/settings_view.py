@@ -162,31 +162,31 @@ class SettingsView(ctk.CTkFrame):
         app = self.winfo_toplevel()
         if hasattr(app, "config_manager"):
             app.config_manager.set("language", lang)
-        self._update_voice_options(lang)
+        # Nie odświeżamy już opcji głosowych przy zmianie języka, 
+        # ponieważ lista głosów jest wspólna i niezależna od języka UI.
 
-    def _update_voice_options(self, lang):
-        voices = {
-            "pl": self._voices_pl,
-            "en": self._voices_en,
-            "de": self._voices_de
-        }
-        available_voices = voices.get(lang, voices["en"])
-        self.voice_selector.configure(values=available_voices)
+    def _update_voice_options(self, lang=None):
+        # Ignorujemy argument lang, używamy jednej wspólnej listy głosów
+        available_voices = self._voices_en 
+        if not available_voices:
+            available_voices = self._voices_pl
+
+        if available_voices:
+            self.voice_selector.configure(values=available_voices)
         
         app = self.winfo_toplevel()
         default_voice = available_voices[0] if available_voices else ""
         saved_voice = default_voice
         if hasattr(app, "config_manager") and available_voices:
-            saved_voice = app.config_manager.get(f"tts_voice_{lang}", default_voice)
+            saved_voice = app.config_manager.get("tts_voice", default_voice)
             if saved_voice not in available_voices:
                 saved_voice = default_voice
         self.voice_selector.set(saved_voice)
 
     def change_voice(self, choice):
-        lang = get_language()
         app = self.winfo_toplevel()
         if hasattr(app, "config_manager"):
-            app.config_manager.set(f"tts_voice_{lang}", choice)
+            app.config_manager.set("tts_voice", choice)
 
     def update_texts(self):
         self.title_label.configure(text=t("settings.title"))
