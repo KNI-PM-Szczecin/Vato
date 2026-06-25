@@ -89,11 +89,11 @@ class SettingsView(ctk.CTkScrollableFrame):
         )
         self.voice_selector.grid(row=0, column=0, sticky="w")
         
-        is_dark = getattr(self.master, "is_dark_mode", True)
+        is_dark = getattr(master, "is_dark_mode", True)
         self.test_voice_btn = ctk.CTkButton(
             self.voice_inner_frame,
             text="",
-            image=getattr(self.master, "speaker_on_image", None),
+            image=getattr(master, "speaker_on_image", None),
             width=40,
             height=40,
             corner_radius=20,
@@ -311,6 +311,6 @@ class SettingsView(ctk.CTkScrollableFrame):
             color = "#" + color
             
         if re.match(r"^#[0-9A-Fa-f]{6}$", color):
-            self.master.apply_accent_color(color)
+            self.winfo_toplevel().apply_accent_color(color)
         else:
             PopupMessage(t("popup.error"), t("settings.invalid_color"), status="error")
