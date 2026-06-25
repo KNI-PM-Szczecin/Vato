@@ -124,9 +124,7 @@ def play_text(text: str, override_voice: str = None, show_errors: bool = False, 
             if override_voice:
                 voice_name = override_voice
             else:
-                lang = get_language()
-                default_voice = {"pl": "Adam", "de": "Rachel"}.get(lang, "Rachel")
-                voice_name = ConfigManager().get(f"tts_voice_{lang}", default_voice)
+                voice_name = ConfigManager().get("tts_voice", "Rachel")
             
             client = ElevenLabs(api_key=api_key)
             
@@ -272,23 +270,25 @@ def get_available_voices():
             tag = ""
             name_check = v.name.lower()
             
-            if any(n in name_check for n in ["adam", "antoni", "domi", "marek"]):
-                tag = "[PL]"
-            elif any(n in name_check for n in ["markus", "hans", "arnold", "fritz", "klaus", "marlene"]):
-                tag = "[DE]"
-            elif v.labels and 'language' in v.labels:
+            if v.labels and 'language' in v.labels:
                 lang = str(v.labels['language']).upper()
                 if "POLISH" in lang or lang == "PL": tag = "[PL]"
                 elif "GERMAN" in lang or lang == "DE": tag = "[DE]"
                 elif "ENGLISH" in lang or lang == "EN": tag = "[EN]"
                 else: tag = f"[{lang[:2]}]"
-            else:
+            elif v.labels and 'accent' in v.labels:
+                accent = str(v.labels['accent']).upper()
+                if "POLISH" in accent or "PL" in accent: tag = "[PL]"
+                elif "GERMAN" in accent or "DE" in accent: tag = "[DE]"
+                elif "AMERICAN" in accent or "BRITISH" in accent or "ENGLISH" in accent: tag = "[EN]"
+
+            if not tag:
                 if getattr(v, "category", "") != "premade":
                     tag = "[CUSTOM]"
                 else:
-                    tag = "[EN]"
+                    tag = "[MULTI]"
                     
-            formatted_name = f"{tag} {v.name}"
+            formatted_name = f"{tag} {v.name}".strip()
             formatted_voices.append(formatted_name)
             
         formatted_voices = sorted(list(set(formatted_voices)))
