@@ -39,9 +39,15 @@ jobs:
           echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> .env
           echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> .env
 
+      - name: Inject Build Hash into Manifest
+        shell: bash
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          python -c "import json; data=json.load(open('manifest.json')); data['build_hash']=r'${SHORT_SHA}'; json.dump(data, open('manifest.json', 'w'))"
+
       - name: Build application
         run: |
-          pyinstaller --noconfirm --onefile --windowed --name Vato --icon=static/vato_v_white.ico --add-data ".env;." --add-data "languages;languages/" --add-data "static;static/" --collect-all customtkinter main.py
+          pyinstaller --noconfirm --onefile --windowed --name Vato --icon=static/vato_v_white.ico --add-data "manifest.json;." --add-data ".env;." --add-data "languages;languages/" --add-data "static;static/" --collect-all customtkinter main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -80,9 +86,15 @@ jobs:
           echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> .env
           echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> .env
 
+      - name: Inject Build Hash into Manifest
+        shell: bash
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          python -c "import json; data=json.load(open('manifest.json')); data['build_hash']=r'${SHORT_SHA}'; json.dump(data, open('manifest.json', 'w'))"
+
       - name: Build application
         run: |
-          pyinstaller --noconfirm --onefile --windowed --name Vato --icon=static/vato_v_white.ico --add-data ".env:." --add-data "languages:languages/" --add-data "static:static/" --collect-all customtkinter main.py
+          pyinstaller --noconfirm --onefile --windowed --name Vato --icon=static/vato_v_white.ico --add-data "manifest.json:." --add-data ".env:." --add-data "languages:languages/" --add-data "static:static/" --collect-all customtkinter main.py
           python -c "import plistlib; p='dist/Vato.app/Contents/Info.plist'; pl=plistlib.load(open(p, 'rb')); pl['LSUIElement']=True; plistlib.dump(pl, open(p, 'wb'))"
           codesign --force --deep -s - dist/Vato.app
           cd dist

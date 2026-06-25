@@ -129,6 +129,63 @@ class SettingsView(ctk.CTkFrame):
         import threading
         threading.Thread(target=self._fetch_voices_async, daemon=True).start()
 
+        import json
+        import os
+        import sys
+        
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            
+        manifest_path = os.path.join(base_path, "manifest.json")
+        manifest_data = {}
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                manifest_data = json.load(f)
+        except Exception:
+            pass
+            
+        app_name = manifest_data.get("name", "Vato")
+        app_version = manifest_data.get("version", "0.1.0")
+        
+        app_desc_data = manifest_data.get("description", {})
+        if isinstance(app_desc_data, str):
+            app_desc_data = {"en": app_desc_data, "pl": app_desc_data, "de": app_desc_data}
+            
+        self.app_name = app_name
+        self.app_version = app_version
+        self.app_desc_data = app_desc_data
+        
+        import subprocess
+        commit_hash = manifest_data.get("build_hash", "a4a385e")  # Fallback z manifestu
+        try:
+            if not getattr(sys, 'frozen', False):
+                commit_hash = subprocess.check_output(
+                    ['git', 'rev-parse', '--short', 'HEAD'], 
+                    cwd=base_path, 
+                    stderr=subprocess.DEVNULL
+                ).decode('utf-8').strip()
+        except Exception:
+            pass
+            
+        self.commit_hash = commit_hash
+        current_lang = get_language()
+        app_desc = self.app_desc_data.get(current_lang, self.app_desc_data.get("en", ""))
+        
+        info_text = f"{app_name} v{app_version}-{commit_hash}\n\n{app_desc}"
+        
+        self.info_label = ctk.CTkLabel(
+            self, 
+            text=info_text, 
+            font=ctk.CTkFont(size=12), 
+            text_color="gray50",
+            justify="center",
+            wraplength=450
+        )
+        self.info_label.grid(row=4, column=0, pady=(40, 20), padx=20, sticky="s")
+        self.grid_rowconfigure(4, weight=1)
+
     def _on_volume_change(self, val):
         self.volume_label.configure(text=f"{int(val*100)}%")
         app = self.winfo_toplevel()
@@ -195,6 +252,12 @@ class SettingsView(ctk.CTkFrame):
         self.custom_color_label.configure(text=t("settings.custom_color"))
         self.apply_color_btn.configure(text=t("settings.apply"))
         self.voice_title.configure(text=t("settings.tts_voice"))
+        
+        if hasattr(self, 'app_desc_data'):
+            current_lang = get_language()
+            app_desc = self.app_desc_data.get(current_lang, self.app_desc_data.get("en", ""))
+            info_text = f"{self.app_name} v{self.app_version}-{self.commit_hash}\n\n{app_desc}"
+            self.info_label.configure(text=info_text)
 
     def set_custom_color(self, hex_color):
         self.custom_color_entry.delete(0, 'end')

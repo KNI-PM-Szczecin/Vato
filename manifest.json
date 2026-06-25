@@ -1,0 +1,9 @@
+{
+  "name": "Vato",
+  "version": "0.1.0",
+  "description": {
+    "en": "Desktop application designed for logistics analysts to automate and streamline the process of verifying contractor credibility. Created for Hackathon Morski 2026 by Mateusz, Paweł, and Aleksy.",
+    "pl": "Aplikacja desktopowa dla analityków logistyki do automatyzacji i usprawnienia procesu weryfikacji wiarygodności kontrahentów. Stworzona na Hackathon Morski 2026 przez Mateusza, Pawła i Aleksego.",
+    "de": "Desktop-Anwendung für Logistikanalysten zur Automatisierung und Optimierung des Verifizierungsprozesses der Glaubwürdigkeit von Auftragnehmern. Erstellt für den Hackathon Morski 2026 von Mateusz, Paweł und Aleksy."
+  }
+}
