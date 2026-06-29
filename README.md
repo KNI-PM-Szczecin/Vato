@@ -1,6 +1,8 @@
 
 <div align="center">
   <img src="static/vato_white.png" alt="Vato Logo" width="300" />
+  <br /><br />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Proprietary-red.svg" alt="License: Proprietary" /></a>
 </div>
 
 <br />
