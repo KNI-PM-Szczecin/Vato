@@ -55,11 +55,35 @@ Vato dynamically evaluates contractors by connecting to multiple reliable data s
 
 ---
 
+## 💻 Targeted Systems
+
+Vato is primarily designed and targeted for **Windows** (Windows 10/11).
+
+The codebase has been tested and confirmed to run on **Linux** and **macOS** as well, though these platforms are not the primary focus of development or support.
+
+---
+
 ## 👥 Team & Responsibilities
 
 * **Mateusz:** Core scoring algorithm and external API integrations.
 * **Paweł:** Email services, PDF generation, and results layout for batch processing.
 * **Aleksy:** GUI implementation, ElevenLabs integration, and foundations for batch processing.
+
+---
+
+---
+
+## 📄 License
+
+**Copyright © 2026 Mateusz, Paweł, Aleksy. All rights reserved.**
+
+This software was created during **Hackathon Morski 2026** and is subject to the terms and regulations of that event. Any provisions set forth by the hackathon organizers regarding intellectual property, usage, and commercialization apply to this work and take precedence where applicable.
+
+Beyond the hackathon's own provisions, this software is **strictly proprietary and confidential**:
+
+- Use, copying, modification, or distribution of this software is permitted **only by the members of this team** (Mateusz, Paweł, Aleksy).
+- No part of this codebase may be shared, sublicensed, published, or used outside the team without the explicit written consent of all team members.
+- Commercial use is prohibited unless agreed upon in writing by all team members.
 
 ---
 
